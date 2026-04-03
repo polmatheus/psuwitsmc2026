@@ -2,198 +2,244 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <title>PSU.WIT. WM</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homeroom - เช็คชื่อตามบ้าน</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <style>
-        /* บังคับสีสไลด์บาร์ด้วยการคำนวณ Progress */
-        input[type=range] { -webkit-appearance: none; width: 100%; height: 8px; border-radius: 5px; outline: none; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background:#ffffff; cursor: pointer; border: 4px solid currentColor; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+        body { font-family: 'Sarabun', sans-serif; background-color: #f0f4f8; min-height: 100vh; }
+        .banner { background: linear-gradient(135deg, #2e7d32, #4caf50); color: white; padding: 20px 0; border-radius: 0 0 20px 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        .card-custom { background: white; border-radius: 15px; padding: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
         
-        /* เฉพาะสีในแต่ละสินทรัพย์ */
-        .psuwit-range { color: #3b82f6; }
-        .btc-range { color: #f97316; }
-        .gold-range { color: #eab308; }
-        .save-range { color: #10b981; }
+        .radio-group input[type="radio"] { display: none; }
+        .radio-group label { padding: 6px 12px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: 0.2s; text-align: center; width: 100%; }
+        
+        /* สีของแต่ละสถานะ */
+        .radio-group input[value="present"]:checked + label { background-color: #d1e7dd; color: #0f5132; border-color: #badbcc; }
+        .radio-group input[value="absent"]:checked + label { background-color: #f8d7da; color: #842029; border-color: #f5c2c7; }
+        .radio-group input[value="leave"]:checked + label { background-color: #fff3cd; color: #664d03; border-color: #ffecb5; }
+        .radio-group input[value="late"]:checked + label { background-color: #cff4fc; color: #055160; border-color: #b6effb; }
+
+        .table-responsive { border-radius: 10px; overflow: hidden; }
+        th { background-color: #f8f9fa !important; }
     </style>
 </head>
-<body class="bg-[#0b0f1a] text-white p-4 min-h-screen">
-    <div class="max-w-6xl mx-auto">
-        <header class="text-center mb-10">
-           <header class="text-center mb-10 flex flex-col items-center justify-center"> <img src="https://img2.pic.in.th/pic/PSUWIT_Circle.png" class="logo-circle shadow-2xl" width="120">
-            <h1 class="text-yellow-500 text-5xl font-black italic tracking-tighter uppercase mb-1">PSU.WIT. WM</h1>
-            <h1 class="text-yellow-500 text-5xl font-black italic">YEAR <span id="year-ui">0</span></h1>
-            <div class="flex justify-center gap-8 mt-4 text-[16px] text-slate-500 font-bold uppercase tracking-widest">
-                <span>ทุนสะสม: <span id="total-cap-ui" class="text-white font-mono">200,000</span></span>
-                <span>งบปีนี้: <span id="budget-ui" class="text-white font-mono">200,000</span></span>
-            </div>
-        </header>
+<body>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-            <div class="space-y-6">
-                <div class="bg-slate-900 rounded-[3rem] p-10 border border-slate-800 text-center shadow-2xl relative">
-                    <p class="text-slate-500 text-xs font-black uppercase tracking-widest mb-2">Net Worth</p>
-                    <h2 id="net-worth" class="text-5xl font-mono font-black text-white">200,000.00</h2>
-                    <div id="overall-diff" class="text-sm font-bold bg-slate-800 px-6 py-1 rounded-full inline-block mt-4 transition-all">±0.00% (0.00)</div>
-                </div>
-
-                <div class="flex gap-2 p-2 bg-slate-900 rounded-3xl border border-slate-800">
-                    <input type="number" id="add-cap-input" placeholder="เติมเงินลงทุนเพิ่ม..." class="flex-1 bg-transparent px-6 text-yellow-500 font-mono focus:outline-none">
-                    <button onclick="addCapital()" class="bg-yellow-500 text-black px-8 py-3 rounded-2xl font-black uppercase text-xs hover:bg-yellow-400">Add Cash</button>
-                </div>
-
-                <div id="asset-container" class="space-y-6"></div>
-
-                <div class="p-8 bg-black/40 border-2 border-dashed border-slate-800 rounded-[2.5rem] flex justify-between items-center">
-                    <span class="text-slate-500 font-black uppercase text-xs">Uninvested Cash:</span>
-                    <span id="cash-left" class="text-4xl font-mono font-black text-green-400">200,000</span>
-                </div>
-            </div>
-
-            <div class="bg-slate-900/40 p-12 rounded-[4rem] border border-slate-800 sticky top-10 flex flex-col items-center">
-                <h3 class="text-slate-500 font-black text-xs uppercase mb-12 tracking-[0.5em]">Portfolio Allocation</h3>
-                <div class="w-full max-w-[450px]">
-                    <canvas id="pieChart"></canvas>
-                </div>
-            </div>
+    <div class="banner text-center">
+        <div class="container">
+            <h3 class="fw-bold m-0"><i class="bi bi-house-door-fill"></i> Homeroom Attendance</h3>
+            <p class="m-0 text-white-50">ระบบเช็คชื่อเข้าแถว (ตามหมายเลขบ้าน)</p>
         </div>
     </div>
 
-    <script>
-        const firebaseConfig = { 
-            apiKey: "AIzaSyDkewWSMrL538xerq70Ae90Svv8_p75Uks",
-            authDomain: "psuwitwm.firebaseapp.com",
-            databaseURL: "https://psuwitwm-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "psuwitwm",
-            appId: "1:268031926990:web:c58f8695deebf4a5f6e69f" 
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-
-        let initialCap = 200000;
-        let addedCap = 0;
-        let currentBudget = 200000;
-        let localYear = 0;
-        let basePrices = { psuwit: 100, btc: 2000000, gold: 70000, save: 1 };
+    <div class="container pb-5">
         
-        const assets = {
-            psuwit: { name: "PSUWIT Stock", invest: 0, hex: "#3b82f6", class: "psuwit-range" },
-            btc: { name: "Bitcoin (BTC)", invest: 0, hex: "#f97316", class: "btc-range" },
-            gold: { name: "Gold (ทอง)", invest: 0, hex: "#eab308", class: "gold-range" },
-            save: { name: "Savings (ออม)", invest: 0, hex: "#10b981", class: "save-range" }
-        };
+        <div class="card-custom mb-4">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold text-success">วันที่เช็คชื่อ</label>
+                    <input type="date" id="checkDate" class="form-control" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold text-success">หมายเลขบ้าน (House)</label>
+                    <select id="houseNumber" class="form-select" required>
+                        <option value="">-- เลือกหมายเลขบ้าน --</option>
+                        <option value="1">บ้าน 1</option>
+                        <option value="2">บ้าน 2</option>
+                        <option value="3">บ้าน 3</option>
+                        <option value="4">บ้าน 4</option>
+                        <option value="5">บ้าน 5</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <button onclick="loadStudents()" class="btn btn-success w-100 fw-bold">
+                        <i class="bi bi-search"></i> โหลดรายชื่อนักเรียน
+                    </button>
+                </div>
+            </div>
+        </div>
 
-        const ctx = document.getElementById('pieChart').getContext('2d');
-        const pieChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: ['PSUWIT', 'BTC', 'GOLD', 'SAVINGS', 'CASH'],
-                datasets: [{
-                    data: [0, 0, 0, 0, 200000],
-                    backgroundColor: ['#3b82f6', '#f97316', '#eab308', '#10b981', '#1e293b'],
-                    borderWidth: 0, hoverOffset: 30
-                }]
-            },
-            options: { cutout: '80%', plugins: { legend: { position: 'bottom', labels: { color: '#475569', font: { weight: 'bold', size: 10 }, padding: 20 } } } }
-        });
-
-        function renderUI() {
-            const container = document.getElementById('asset-container');
-            container.innerHTML = '';
-            Object.keys(assets).forEach(key => {
-                const a = assets[key];
-                const progress = (a.invest / currentBudget) * 100 || 0;
-                
-                // สร้างสไลด์บาร์ที่มีสีตามที่ลาก
-                container.innerHTML += `
-                    <div class="bg-slate-900 p-6 rounded-[2rem] border border-slate-800">
-                        <div class="flex justify-between mb-3 items-center">
-                            <span class="font-black text-xs uppercase tracking-widest" style="color:${a.hex}">${a.name}</span>
-                            <span class="text-[14px] font-mono text-slate-500 font-bold italic underline">Price: ฿${basePrices[key].toLocaleString(undefined,{maximumFractionDigits:0})}</span>
-                        </div>
-                        <input type="number" value="${a.invest}" class="w-full bg-black/40 border border-slate-800 rounded-xl p-3 mb-4 text-right text-yellow-500 font-mono text-lg font-bold focus:outline-none" onchange="handleUpdate('${key}', this.value)">
-                        <input type="range" min="0" max="${currentBudget}" step="100" value="${a.invest}" 
-                            class="${a.class}" 
-                            style="background: linear-gradient(to right, ${a.hex} ${progress}%, #1e293b ${progress}%);"
-                            oninput="handleUpdate('${key}', this.value)">
-                    </div>`;
-            });
-            updateSummary();
-        }
-
-        function handleUpdate(key, val) {
-            let value = parseFloat(val) || 0;
-            let other = 0;
-            Object.keys(assets).forEach(k => { if(k !== key) other += assets[k].invest; });
-            if (other + value > currentBudget) value = currentBudget - other;
-            assets[key].invest = value;
-            renderUI();
-        }
-
-        function addCapital() {
-            const amount = parseFloat(document.getElementById('add-cap-input').value) || 0;
-            if (amount <= 0) return;
-            addedCap += amount;
-            currentBudget += amount;
-            document.getElementById('add-cap-input').value = '';
-            renderUI();
-        }
-
-        function updateSummary() {
-            let invested = 0;
-            Object.keys(assets).forEach(k => invested += assets[k].invest);
-            const cash = currentBudget - invested;
-            const totalCost = initialCap + addedCap; // กำไรคิดจากต้นทุนรวม
-            const diff = currentBudget - totalCost;
-            const pct = (diff / totalCost * 100).toFixed(2);
-
-            document.getElementById('cash-left').innerText = cash.toLocaleString();
-            document.getElementById('budget-ui').innerText = currentBudget.toLocaleString();
-            document.getElementById('total-cap-ui').innerText = totalCost.toLocaleString();
-            document.getElementById('net-worth').innerText = currentBudget.toLocaleString(undefined, {minimumFractionDigits:2});
+        <div class="card-custom" id="attendanceSection" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold m-0 text-success" id="tableTitle">รายชื่อนักเรียน</h5>
+                <button onclick="saveAttendance()" class="btn btn-primary rounded-pill fw-bold px-4">
+                    <i class="bi bi-save"></i> บันทึกข้อมูล
+                </button>
+            </div>
             
-            const diffUI = document.getElementById('overall-diff');
-            diffUI.innerText = `${diff >= 0 ? '+' : ''}${pct}% (${diff.toLocaleString()})`;
-            diffUI.className = `text-xs font-black px-6 py-2 rounded-full ${diff >= 0 ? 'text-green-400 bg-green-500/10' : 'text-rose-500 bg-rose-500/10'}`;
+            <div class="table-responsive border">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="text-center text-secondary small">
+                        <tr>
+                            <th width="15%">รหัส</th>
+                            <th width="35%" class="text-start">ชื่อ - นามสกุล</th>
+                            <th width="50%">สถานะการมาเรียน</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentList">
+                        </tbody>
+                </table>
+            </div>
+        </div>
 
-            // อัปเดตแผนภูมิวงกลม
-            pieChart.data.datasets[0].data = [assets.psuwit.invest, assets.btc.invest, assets.gold.invest, assets.save.invest, cash];
-            pieChart.update();
-        }
+        <div class="text-center mt-4">
+            <a href="index.html" class="text-secondary text-decoration-none"><i class="bi bi-arrow-left"></i> กลับหน้าเมนูหลัก</a>
+        </div>
 
-        db.ref('market_state').on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (!data) return;
+    </div>
 
-            if (data.year === 0 && localYear !== 0) {
-                initialCap = 200000; addedCap = 0; currentBudget = 200000; localYear = 0;
-                basePrices = { psuwit: 100, btc: 1800000, gold: 34500, save: 1 };
-                Object.keys(assets).forEach(k => assets[k].invest = 0);
-                document.getElementById('year-ui').innerText = "0";
-                renderUI();
+    <script>
+        // ⚠️ ใส่ URL และ KEY ของ Supabase 
+        const SUPABASE_URL = 'https://pqkaqsxmbewilzruogdw.supabase.co'; 
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxa2Fxc3htYmV3aWx6cnVvZ2R3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0ODgzMTksImV4cCI6MjA4NDA2NDMxOX0.TFyfNcFXcUUF29Iexmkjf6EaNIXAv8KuOFY_ydAY_z8'; 
+        const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // เซ็ตวันที่ปัจจุบันอัตโนมัติ
+        document.getElementById('checkDate').valueAsDate = new Date();
+
+        let currentStudents = [];
+
+        async function loadStudents() {
+            const checkDate = document.getElementById('checkDate').value;
+            const houseNum = document.getElementById('houseNumber').value;
+
+            if (!checkDate || !houseNum) {
+                Swal.fire('แจ้งเตือน', 'กรุณาเลือกวันที่และหมายเลขบ้าน', 'warning');
                 return;
             }
 
-            if (data.year > localYear) {
-                let endVal = 0;
-                let unused = currentBudget;
-                Object.keys(assets).forEach(key => {
-                    unused -= assets[key].invest;
-                    const interest = (key === 'save') ? 1.0075 : 1; // ออมทรัพย์ 0.75%
-                    endVal += (assets[key].invest * data.multi[key] * interest);
-                    if (key !== 'save') basePrices[key] *= data.multi[key];
-                });
-                currentBudget = endVal + unused; // ทบยอดกำไรเป็นทุนปีถัดไป
-                localYear = data.year;
-                Object.keys(assets).forEach(k => assets[k].invest = 0);
-                document.getElementById('year-ui').innerText = localYear;
-                renderUI();
-            }
-        });
+            Swal.fire({ title: 'กำลังโหลดข้อมูล...', didOpen: () => Swal.showLoading() });
 
-        renderUI();
+            try {
+                // 1. ดึงรายชื่อนักเรียนตามหมายเลขบ้าน
+                const { data: students, error: err1 } = await client
+                    .from('students')
+                    .select('*')
+                    .eq('house', parseInt(houseNum)) // ค้นหาด้วยตัวเลข (Integer)
+                    .order('student_id', { ascending: true });
+
+                if (err1) throw err1;
+
+                // 2. เช็คว่าบ้านนี้ถูกเช็คชื่อไปแล้วหรือยังในวันนี้ (เพื่อเอาสถานะเดิมมาแสดง)
+                const { data: attendance, error: err2 } = await client
+                    .from('daily_attendance')
+                    .select('student_id, status')
+                    .eq('check_date', checkDate)
+                    .eq('module_type', 'homeroom')
+                    .eq('target_group', parseInt(houseNum));
+                
+                if (err2) throw err2;
+
+                // สร้าง Map เก็บสถานะเก่า (ถ้ามี)
+                let savedStatusMap = {};
+                attendance.forEach(rec => { savedStatusMap[rec.student_id] = rec.status; });
+
+                currentStudents = students;
+                renderTable(students, savedStatusMap, houseNum);
+                Swal.close();
+
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Error', 'ไม่สามารถโหลดข้อมูลได้', 'error');
+            }
+        }
+
+        function renderTable(students, savedStatusMap, houseNum) {
+            document.getElementById('attendanceSection').style.display = 'block';
+            document.getElementById('tableTitle').innerText = `รายชื่อนักเรียน - บ้าน ${houseNum} (${students.length} คน)`;
+
+            let html = '';
+            if (students.length === 0) {
+                html = `<tr><td colspan="3" class="text-center py-4 text-muted">ไม่พบรายชื่อนักเรียนในบ้านนี้</td></tr>`;
+            } else {
+                students.forEach(std => {
+                    // ถ้าเคยบันทึกแล้วให้ดึงค่าเดิมมา ถ้ายังให้ default เป็น 'present'
+                    let currentStatus = savedStatusMap[std.student_id] || 'present';
+
+                    const isP = currentStatus === 'present' ? 'checked' : '';
+                    const isA = currentStatus === 'absent' ? 'checked' : '';
+                    const isL = currentStatus === 'leave' ? 'checked' : '';
+                    const isT = currentStatus === 'late' ? 'checked' : '';
+
+                    html += `
+                    <tr>
+                        <td class="text-center font-monospace text-secondary">${std.student_id}</td>
+                        <td class="fw-bold text-dark">${std.fullname}</td>
+                        <td>
+                            <div class="row g-1 radio-group">
+                                <div class="col-3">
+                                    <input type="radio" name="status_${std.student_id}" id="p_${std.student_id}" value="present" ${isP}>
+                                    <label for="p_${std.student_id}">มา</label>
+                                </div>
+                                <div class="col-3">
+                                    <input type="radio" name="status_${std.student_id}" id="a_${std.student_id}" value="absent" ${isA}>
+                                    <label for="a_${std.student_id}">ขาด</label>
+                                </div>
+                                <div class="col-3">
+                                    <input type="radio" name="status_${std.student_id}" id="l_${std.student_id}" value="leave" ${isL}>
+                                    <label for="l_${std.student_id}">ลา</label>
+                                </div>
+                                <div class="col-3">
+                                    <input type="radio" name="status_${std.student_id}" id="t_${std.student_id}" value="late" ${isT}>
+                                    <label for="t_${std.student_id}">สาย</label>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>`;
+                });
+            }
+            document.getElementById('studentList').innerHTML = html;
+        }
+
+        async function saveAttendance() {
+            const checkDate = document.getElementById('checkDate').value;
+            const houseNum = parseInt(document.getElementById('houseNumber').value);
+
+            if (currentStudents.length === 0) return;
+
+            // รวบรวมข้อมูลจากหน้าจอ
+            let recordsToInsert = [];
+            currentStudents.forEach(std => {
+                const status = document.querySelector(`input[name="status_${std.student_id}"]:checked`).value;
+                
+                recordsToInsert.push({
+                    check_date: checkDate,
+                    module_type: 'homeroom',
+                    student_id: std.student_id,
+                    status: status,
+                    target_group: houseNum,
+                    subject_name: null,
+                    period: null
+                });
+            });
+
+            Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            try {
+                // 1. ลบข้อมูลของวันและบ้านนี้ทิ้งก่อน (กรณีครูกดแก้/อัปเดต จะได้ไม่ซ้ำซ้อน)
+                await client.from('daily_attendance')
+                    .delete()
+                    .eq('check_date', checkDate)
+                    .eq('module_type', 'homeroom')
+                    .eq('target_group', houseNum);
+
+                // 2. บันทึกข้อมูลชุดใหม่เข้าไป
+                const { error } = await client.from('daily_attendance').insert(recordsToInsert);
+                if (error) throw error;
+
+                Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ!', timer: 1500, showConfirmButton: false });
+
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Error', 'บันทึกข้อมูลไม่สำเร็จ', 'error');
+            }
+        }
     </script>
 </body>
 </html>

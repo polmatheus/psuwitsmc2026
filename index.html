@@ -34,7 +34,7 @@
     <div class="banner text-center">
         <div class="container">
             <h3 class="fw-bold m-0"><i class="bi bi-house-door-fill"></i> Homeroom Attendance</h3>
-            <p class="m-0 text-white-50">ระบบเช็คชื่อเข้าแถว (ตามหมายเลขบ้าน)</p>
+            <p class="m-0 text-white-50">ระบบเช็คชื่อเข้าแถว (ตามบ้าน)</p>
         </div>
     </div>
 
@@ -49,7 +49,7 @@
                 <div class="col-md-4">
                     <label class="form-label fw-bold text-success">หมายเลขบ้าน (House)</label>
                     <select id="houseNumber" class="form-select" required>
-                        <option value="">-- เลือกหมายเลขบ้าน --</option>
+                        <option value="">-- เลือกบ้าน --</option>
                         <option value="บ้าน 1">บ้าน 1</option>
                         <option value="บ้าน 2">บ้าน 2</option>
                         <option value="บ้าน 3">บ้าน 3</option>
@@ -100,7 +100,7 @@
     </div>
 
     <script>
-        // ⚠️ ใส่ URL และ KEY ของ Supabase 
+        // ⚠️ ใส่ URL และ KEY ของ Supabase ของคุณ
         const SUPABASE_URL = 'https://pqkaqsxmbewilzruogdw.supabase.co'; 
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxa2Fxc3htYmV3aWx6cnVvZ2R3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0ODgzMTksImV4cCI6MjA4NDA2NDMxOX0.TFyfNcFXcUUF29Iexmkjf6EaNIXAv8KuOFY_ydAY_z8'; 
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -122,22 +122,22 @@
             Swal.fire({ title: 'กำลังโหลดข้อมูล...', didOpen: () => Swal.showLoading() });
 
             try {
-                // 1. ดึงรายชื่อนักเรียนตามหมายเลขบ้าน
+                // 1. ดึงรายชื่อนักเรียน (ใช้ String ค้นหาตรงๆ)
                 const { data: students, error: err1 } = await client
                     .from('students')
                     .select('*')
-                    .eq('house', parseInt(houseNum)) // ค้นหาด้วยตัวเลข (Integer)
+                    .eq('house', houseNum) 
                     .order('student_id', { ascending: true });
 
                 if (err1) throw err1;
 
-                // 2. เช็คว่าบ้านนี้ถูกเช็คชื่อไปแล้วหรือยังในวันนี้ (เพื่อเอาสถานะเดิมมาแสดง)
+                // 2. เช็คว่าบ้านนี้ถูกเช็คชื่อไปแล้วหรือยังในวันนี้
                 const { data: attendance, error: err2 } = await client
                     .from('daily_attendance')
                     .select('student_id, status')
                     .eq('check_date', checkDate)
                     .eq('module_type', 'homeroom')
-                    .eq('target_group', parseInt(houseNum));
+                    .eq('target_group', houseNum); // ใช้ String
                 
                 if (err2) throw err2;
 
@@ -157,14 +157,13 @@
 
         function renderTable(students, savedStatusMap, houseNum) {
             document.getElementById('attendanceSection').style.display = 'block';
-            document.getElementById('tableTitle').innerText = `รายชื่อนักเรียน - บ้าน ${houseNum} (${students.length} คน)`;
+            document.getElementById('tableTitle').innerText = `รายชื่อนักเรียน - ${houseNum} (${students.length} คน)`;
 
             let html = '';
             if (students.length === 0) {
-                html = `<tr><td colspan="3" class="text-center py-4 text-muted">ไม่พบรายชื่อนักเรียนในบ้านนี้</td></tr>`;
+                html = `<tr><td colspan="3" class="text-center py-4 text-muted">ไม่พบรายชื่อนักเรียนใน ${houseNum}</td></tr>`;
             } else {
                 students.forEach(std => {
-                    // ถ้าเคยบันทึกแล้วให้ดึงค่าเดิมมา ถ้ายังให้ default เป็น 'present'
                     let currentStatus = savedStatusMap[std.student_id] || 'present';
 
                     const isP = currentStatus === 'present' ? 'checked' : '';
@@ -204,7 +203,7 @@
 
         async function saveAttendance() {
             const checkDate = document.getElementById('checkDate').value;
-            const houseNum = parseInt(document.getElementById('houseNumber').value);
+            const houseNum = document.getElementById('houseNumber').value;
 
             if (currentStudents.length === 0) return;
 
@@ -227,14 +226,14 @@
             Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
             try {
-                // 1. ลบข้อมูลของวันและบ้านนี้ทิ้งก่อน (กรณีครูกดแก้/อัปเดต จะได้ไม่ซ้ำซ้อน)
+                // ลบข้อมูลเดิมของวันและบ้านนี้ทิ้งก่อนบันทึกใหม่
                 await client.from('daily_attendance')
                     .delete()
                     .eq('check_date', checkDate)
                     .eq('module_type', 'homeroom')
                     .eq('target_group', houseNum);
 
-                // 2. บันทึกข้อมูลชุดใหม่เข้าไป
+                // บันทึกข้อมูล
                 const { error } = await client.from('daily_attendance').insert(recordsToInsert);
                 if (error) throw error;
 

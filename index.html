@@ -56,11 +56,6 @@
                         <option value="บ้าน 3">บ้าน 3</option>
                         <option value="บ้าน 4">บ้าน 4</option>
                         <option value="บ้าน 5">บ้าน 5</option>
-                        <option value="บ้าน 6">บ้าน 6</option>
-                        <option value="บ้าน 7">บ้าน 7</option>
-                        <option value="บ้าน 8">บ้าน 8</option>
-                        <option value="บ้าน 9">บ้าน 9</option>
-                        <option value="บ้าน 10">บ้าน 10</option>
                     </select>
                 </div>
                 <div class="col-md-4">
@@ -82,14 +77,25 @@
         </div>
 
         <div class="card-custom" id="attendanceSection" style="display: none;">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <div>
+            
+            <div class="row g-3 align-items-center mb-3 bg-light p-3 rounded border">
+                <div class="col-md-4">
                     <h5 class="fw-bold m-0 text-success" id="tableTitle">รายชื่อนักเรียน</h5>
                     <small class="text-muted" id="subjectDisplay"></small>
                 </div>
-                <button onclick="saveAttendance()" class="btn btn-primary rounded-pill fw-bold px-4 shadow-sm">
-                    <i class="bi bi-save2"></i> บันทึกข้อมูล
-                </button>
+                <div class="col-md-5">
+                    <div class="input-group">
+                        <span class="input-group-text bg-success text-white"><i class="bi bi-person-badge"></i></span>
+                        <select id="teacherSelect" class="form-select border-success">
+                            <option value="">-- เลือกครูผู้บันทึก (บ้านนี้) --</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <button onclick="saveAttendance()" class="btn btn-primary w-100 rounded-pill fw-bold shadow-sm">
+                        <i class="bi bi-save2"></i> บันทึกข้อมูล
+                    </button>
+                </div>
             </div>
             
             <div class="table-responsive border">
@@ -112,7 +118,6 @@
     </div>
 
     <script>
-        // ⚠️ ใส่ KEY ของคุณตรงนี้
         const SUPABASE_URL = 'https://pqkaqsxmbewilzruogdw.supabase.co'; 
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxa2Fxc3htYmV3aWx6cnVvZ2R3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0ODgzMTksImV4cCI6MjA4NDA2NDMxOX0.TFyfNcFXcUUF29Iexmkjf6EaNIXAv8KuOFY_ydAY_z8'; 
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -124,9 +129,9 @@
 
         async function loadStudents() {
             const date = document.getElementById('checkDate').value;
-            const house = document.getElementById('houseSelect').value; // เช่น 'บ้าน 1'
-            const period = document.querySelector('input[name="periodSelect"]:checked').value; // 'เช้า' หรือ 'บ่าย'
-            const subjectName = `homeroom ${period}`; // สร้าง string "homeroom เช้า" หรือ "homeroom บ่าย"
+            const house = document.getElementById('houseSelect').value; 
+            const period = document.querySelector('input[name="periodSelect"]:checked').value; 
+            const subjectName = `homeroom ${period}`; 
 
             if (!date || !house) {
                 Swal.fire('แจ้งเตือน', 'กรุณาระบุวันที่และเลือกบ้าน', 'warning');
@@ -136,7 +141,7 @@
             Swal.fire({ title: 'กำลังโหลด...', didOpen: () => Swal.showLoading() });
 
             try {
-                // 1. ดึงข้อมูลนักเรียนจากบ้านที่เลือก (Text)
+                // 1. ดึงข้อมูลนักเรียนจากบ้านที่เลือก
                 const { data: students, error: err1 } = await client
                     .from('students')
                     .select('*')
@@ -145,10 +150,25 @@
 
                 if (err1) throw err1;
 
-                // 2. ดึงประวัติการเช็คชื่อเดิม (ถ้ามี)
+                // 2. ดึงข้อมูลครูที่มีความเกี่ยวข้องกับ "บ้าน" นี้
+                const { data: teachers, error: errTeacher } = await client
+                    .from('teachers')
+                    .select('fullname')
+                    .eq('house', house); // 🔥 กรองครูเฉพาะบ้านนี้
+
+                if (errTeacher) throw errTeacher;
+
+                // อัปเดต Dropdown เลือกครู
+                const teacherSelect = document.getElementById('teacherSelect');
+                teacherSelect.innerHTML = '<option value="">-- เลือกครูผู้บันทึก --</option>';
+                teachers.forEach(t => {
+                    teacherSelect.innerHTML += `<option value="${t.fullname}">${t.fullname}</option>`;
+                });
+
+                // 3. ดึงประวัติการเช็คชื่อเดิม (เผื่อแก้ไข)
                 const { data: savedData, error: err2 } = await client
                     .from('daily_attendance')
-                    .select('student_id, status')
+                    .select('student_id, status, recorded_by')
                     .eq('check_date', date)
                     .eq('module_type', 'homeroom')
                     .eq('target_group', house)
@@ -157,7 +177,16 @@
                 if (err2) throw err2;
 
                 let statusMap = {};
-                savedData.forEach(row => { statusMap[row.student_id] = row.status; });
+                let lastRecordedBy = '';
+                savedData.forEach(row => { 
+                    statusMap[row.student_id] = row.status; 
+                    if(row.recorded_by) lastRecordedBy = row.recorded_by; // จำชื่อครูที่เคยเช็ค
+                });
+
+                // ถ้าเคยมีคนเช็คไว้แล้ว ให้เซ็ตชื่อครูคนนั้นใน Dropdown เลย
+                if(lastRecordedBy) {
+                    setTimeout(() => { teacherSelect.value = lastRecordedBy; }, 100);
+                }
 
                 currentStudents = students;
                 renderTable(students, statusMap, house, subjectName);
@@ -179,7 +208,7 @@
                 html = `<tr><td colspan="3" class="text-center py-4">ไม่พบนักเรียนใน ${house}</td></tr>`;
             } else {
                 students.forEach(std => {
-                    let st = statusMap[std.student_id] || 'present';
+                    let st = statusMap[std.student_id] || 'present'; // default 'มา'
                     html += `
                     <tr>
                         <td class="text-center font-monospace small text-muted">${std.student_id}</td>
@@ -211,12 +240,23 @@
         }
 
         async function saveAttendance() {
+            if (currentStudents.length === 0) return;
+
             const date = document.getElementById('checkDate').value;
             const house = document.getElementById('houseSelect').value;
             const period = document.querySelector('input[name="periodSelect"]:checked').value;
-            const subjectName = `homeroom ${period}`; // วิชากลายเป็น 'homeroom เช้า' หรือ 'homeroom บ่าย'
-
-            if (currentStudents.length === 0) return;
+            const subjectName = `homeroom ${period}`;
+            
+            // 🔥 ตรวจสอบว่าเลือกครูผู้บันทึกหรือยัง
+            const teacherName = document.getElementById('teacherSelect').value;
+            if (!teacherName) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ลืมเลือกครูผู้บันทึก',
+                    text: 'กรุณาระบุชื่อครูผู้บันทึกในกล่องสีเขียวก่อนกดบันทึกข้อมูลครับ'
+                });
+                return;
+            }
 
             // เตรียมข้อมูลเพื่อ Insert
             let records = currentStudents.map(std => ({
@@ -224,15 +264,16 @@
                 module_type: 'homeroom',
                 student_id: std.student_id,
                 status: document.querySelector(`input[name="st_${std.student_id}"]:checked`).value,
-                target_group: house,     // เก็บ 'บ้าน 1'
-                subject_name: subjectName, // เก็บ 'homeroom เช้า'
-                period: period           // เก็บ 'เช้า'
+                target_group: house,     
+                subject_name: subjectName, 
+                period: period,
+                recorded_by: teacherName  // 🔥 ส่งชื่อครูเข้า Database ด้วย
             }));
 
             Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading() });
 
             try {
-                // เคลียร์ข้อมูลเก่าของวัน/บ้าน/คาบ นั้นๆ ออกก่อน (กันข้อมูลเบิ้ลเวลาครูกดแก้)
+                // เคลียร์ข้อมูลเก่าของวัน/บ้าน/คาบ นั้นๆ ออกก่อน
                 await client.from('daily_attendance').delete()
                     .eq('check_date', date)
                     .eq('module_type', 'homeroom')
@@ -243,7 +284,7 @@
                 const { error } = await client.from('daily_attendance').insert(records);
                 if (error) throw error;
 
-                Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ!', timer: 1500, showConfirmButton: false });
+                Swal.fire({ icon: 'success', title: 'บันทึกข้อมูลสำเร็จ!', text: `บันทึกโดย: ${teacherName}`, timer: 1500, showConfirmButton: false });
             } catch (err) {
                 console.error(err);
                 Swal.fire('Error', 'ไม่สามารถบันทึกข้อมูลได้', 'error');

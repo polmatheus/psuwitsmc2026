@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Homeroom (เช้า/บ่าย) - PSUWIT</title>
+    <title>Homeroom Check-in - PSUWIT</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -13,10 +13,9 @@
 
     <style>
         body { font-family: 'Sarabun', sans-serif; background-color: #f0f4f8; min-height: 100vh; }
-        .banner { background: linear-gradient(135deg, #1b5e20, #43a047); color: white; padding: 20px 0; border-radius: 0 0 20px 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        .banner { background: linear-gradient(135deg, #2e7d32, #4caf50); color: white; padding: 20px 0; border-radius: 0 0 20px 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }
         .card-custom { background: white; border-radius: 15px; padding: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
         
-        /* สไตล์ปุ่มเลือกช่วงเวลา */
         .period-selector .btn-check:checked + .btn { background-color: #1b5e20; color: white; border-color: #1b5e20; }
         
         .radio-group input[type="radio"] { display: none; }
@@ -27,8 +26,8 @@
         .radio-group input[value="leave"]:checked + label { background-color: #fff3cd; color: #664d03; border-color: #ffecb5; }
         .radio-group input[value="late"]:checked + label { background-color: #cff4fc; color: #055160; border-color: #b6effb; }
 
-        .table-responsive { border-radius: 10px; }
-        .sticky-header th { position: sticky; top: 0; background: #f8f9fa !important; z-index: 10; }
+        .sticky-header th { position: sticky; top: 0; background: #f8f9fa !important; z-index: 10; border-bottom: 2px solid #dee2e6; }
+        .table-responsive { max-height: 60vh; overflow-y: auto; border-radius: 8px; }
     </style>
 </head>
 <body>
@@ -36,7 +35,7 @@
     <div class="banner text-center">
         <div class="container">
             <h3 class="fw-bold m-0"><i class="bi bi-sun-fill"></i> Homeroom Check-in</h3>
-            <p class="m-0 text-white-50">แยกเช็คชื่อ รอบเช้า และ รอบบ่าย</p>
+            <p class="m-0 text-white-50">ระบบเช็คชื่อเข้าแถว (รายบ้าน)</p>
         </div>
     </div>
 
@@ -49,16 +48,28 @@
                     <input type="date" id="checkDate" class="form-control">
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label fw-bold">บ้าน (House No.)</label>
-                    <input type="number" id="houseNumber" class="form-control" placeholder="ระบุเลขบ้าน (เช่น 1)">
+                    <label class="form-label fw-bold">เลือกบ้าน (House)</label>
+                    <select id="houseSelect" class="form-select">
+                        <option value="">-- ระบุบ้าน --</option>
+                        <option value="บ้าน 1">บ้าน 1</option>
+                        <option value="บ้าน 2">บ้าน 2</option>
+                        <option value="บ้าน 3">บ้าน 3</option>
+                        <option value="บ้าน 4">บ้าน 4</option>
+                        <option value="บ้าน 5">บ้าน 5</option>
+                        <option value="บ้าน 6">บ้าน 6</option>
+                        <option value="บ้าน 7">บ้าน 7</option>
+                        <option value="บ้าน 8">บ้าน 8</option>
+                        <option value="บ้าน 9">บ้าน 9</option>
+                        <option value="บ้าน 10">บ้าน 10</option>
+                    </select>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label fw-bold">ช่วงเวลา</label>
                     <div class="d-flex gap-2 period-selector">
-                        <input type="radio" class="btn-check" name="periodSelect" id="p_morning" value="morning" checked>
+                        <input type="radio" class="btn-check" name="periodSelect" id="p_morning" value="เช้า" checked>
                         <label class="btn btn-outline-success w-100 fw-bold" for="p_morning">☀️ เช้า</label>
 
-                        <input type="radio" class="btn-check" name="periodSelect" id="p_afternoon" value="afternoon">
+                        <input type="radio" class="btn-check" name="periodSelect" id="p_afternoon" value="บ่าย">
                         <label class="btn btn-outline-success w-100 fw-bold" for="p_afternoon">🌤️ บ่าย</label>
                     </div>
                 </div>
@@ -74,10 +85,10 @@
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
                     <h5 class="fw-bold m-0 text-success" id="tableTitle">รายชื่อนักเรียน</h5>
-                    <small class="text-muted" id="periodDisplay"></small>
+                    <small class="text-muted" id="subjectDisplay"></small>
                 </div>
                 <button onclick="saveAttendance()" class="btn btn-primary rounded-pill fw-bold px-4 shadow-sm">
-                    <i class="bi bi-check2-circle"></i> บันทึกข้อมูล
+                    <i class="bi bi-save2"></i> บันทึกข้อมูล
                 </button>
             </div>
             
@@ -85,8 +96,8 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="sticky-header text-center small">
                         <tr>
-                            <th width="20%">รหัส</th>
-                            <th width="30%" class="text-start">ชื่อ-นามสกุล</th>
+                            <th width="15%">รหัส</th>
+                            <th width="35%" class="text-start">ชื่อ-นามสกุล</th>
                             <th width="50%">สถานะ</th>
                         </tr>
                     </thead>
@@ -101,43 +112,46 @@
     </div>
 
     <script>
+        // ⚠️ ใส่ KEY ของคุณตรงนี้
         const SUPABASE_URL = 'https://pqkaqsxmbewilzruogdw.supabase.co'; 
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxa2Fxc3htYmV3aWx6cnVvZ2R3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0ODgzMTksImV4cCI6MjA4NDA2NDMxOX0.TFyfNcFXcUUF29Iexmkjf6EaNIXAv8KuOFY_ydAY_z8'; 
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // ตั้งค่าวันที่ปัจจุบัน
         document.getElementById('checkDate').valueAsDate = new Date();
 
         let currentStudents = [];
 
         async function loadStudents() {
             const date = document.getElementById('checkDate').value;
-            const house = document.getElementById('houseNumber').value;
-            const period = document.querySelector('input[name="periodSelect"]:checked').value;
+            const house = document.getElementById('houseSelect').value; // เช่น 'บ้าน 1'
+            const period = document.querySelector('input[name="periodSelect"]:checked').value; // 'เช้า' หรือ 'บ่าย'
+            const subjectName = `homeroom ${period}`; // สร้าง string "homeroom เช้า" หรือ "homeroom บ่าย"
 
             if (!date || !house) {
-                Swal.fire('แจ้งเตือน', 'กรุณาระบุวันที่และเลขบ้าน', 'warning');
+                Swal.fire('แจ้งเตือน', 'กรุณาระบุวันที่และเลือกบ้าน', 'warning');
                 return;
             }
 
             Swal.fire({ title: 'กำลังโหลด...', didOpen: () => Swal.showLoading() });
 
             try {
-                // 1. ดึงรายชื่อนักเรียนในบ้านนั้น
+                // 1. ดึงข้อมูลนักเรียนจากบ้านที่เลือก (Text)
                 const { data: students, error: err1 } = await client
                     .from('students')
                     .select('*')
-                    .eq('house', parseInt(house))
+                    .eq('house', house) 
                     .order('student_id', { ascending: true });
 
                 if (err1) throw err1;
 
-                // 2. ดึงข้อมูลที่เคยเช็คไว้แล้วในวันและช่วงเวลานั้นๆ
+                // 2. ดึงประวัติการเช็คชื่อเดิม (ถ้ามี)
                 const { data: savedData, error: err2 } = await client
                     .from('daily_attendance')
                     .select('student_id, status')
                     .eq('check_date', date)
                     .eq('module_type', 'homeroom')
-                    .eq('target_group', parseInt(house))
+                    .eq('target_group', house)
                     .eq('period', period);
                 
                 if (err2) throw err2;
@@ -146,7 +160,7 @@
                 savedData.forEach(row => { statusMap[row.student_id] = row.status; });
 
                 currentStudents = students;
-                renderTable(students, statusMap, house, period);
+                renderTable(students, statusMap, house, subjectName);
                 Swal.close();
 
             } catch (err) {
@@ -155,21 +169,21 @@
             }
         }
 
-        function renderTable(students, statusMap, house, period) {
+        function renderTable(students, statusMap, house, subjectName) {
             document.getElementById('attendanceSection').style.display = 'block';
-            document.getElementById('tableTitle').innerText = `บ้าน ${house} (${students.length} คน)`;
-            document.getElementById('periodDisplay').innerText = `รอบ: ${period === 'morning' ? '☀️ เช้า' : '🌤️ บ่าย'}`;
+            document.getElementById('tableTitle').innerText = `${house} (${students.length} คน)`;
+            document.getElementById('subjectDisplay').innerText = `วิชา: ${subjectName}`;
 
             let html = '';
             if (students.length === 0) {
-                html = `<tr><td colspan="3" class="text-center py-4">ไม่พบนักเรียนในบ้านหมายเลขนี้</td></tr>`;
+                html = `<tr><td colspan="3" class="text-center py-4">ไม่พบนักเรียนใน ${house}</td></tr>`;
             } else {
                 students.forEach(std => {
                     let st = statusMap[std.student_id] || 'present';
                     html += `
                     <tr>
-                        <td class="text-center font-monospace small">${std.student_id}</td>
-                        <td class="fw-bold">${std.fullname}</td>
+                        <td class="text-center font-monospace small text-muted">${std.student_id}</td>
+                        <td class="fw-bold text-dark">${std.fullname}</td>
                         <td>
                             <div class="row g-1 radio-group text-center">
                                 <div class="col-3">
@@ -198,36 +212,41 @@
 
         async function saveAttendance() {
             const date = document.getElementById('checkDate').value;
-            const house = parseInt(document.getElementById('houseNumber').value);
+            const house = document.getElementById('houseSelect').value;
             const period = document.querySelector('input[name="periodSelect"]:checked').value;
+            const subjectName = `homeroom ${period}`; // วิชากลายเป็น 'homeroom เช้า' หรือ 'homeroom บ่าย'
 
             if (currentStudents.length === 0) return;
 
+            // เตรียมข้อมูลเพื่อ Insert
             let records = currentStudents.map(std => ({
                 check_date: date,
                 module_type: 'homeroom',
                 student_id: std.student_id,
                 status: document.querySelector(`input[name="st_${std.student_id}"]:checked`).value,
-                target_group: house,
-                period: period
+                target_group: house,     // เก็บ 'บ้าน 1'
+                subject_name: subjectName, // เก็บ 'homeroom เช้า'
+                period: period           // เก็บ 'เช้า'
             }));
 
             Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading() });
 
             try {
-                // เคลียร์ข้อมูลเก่าเฉพาะ วัน/บ้าน/ช่วงเวลา นั้นๆ
+                // เคลียร์ข้อมูลเก่าของวัน/บ้าน/คาบ นั้นๆ ออกก่อน (กันข้อมูลเบิ้ลเวลาครูกดแก้)
                 await client.from('daily_attendance').delete()
                     .eq('check_date', date)
                     .eq('module_type', 'homeroom')
                     .eq('target_group', house)
                     .eq('period', period);
 
+                // บันทึกชุดใหม่
                 const { error } = await client.from('daily_attendance').insert(records);
                 if (error) throw error;
 
-                Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ!', timer: 1000, showConfirmButton: false });
+                Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ!', timer: 1500, showConfirmButton: false });
             } catch (err) {
-                Swal.fire('Error', 'ไม่สามารถบันทึกได้', 'error');
+                console.error(err);
+                Swal.fire('Error', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
             }
         }
     </script>

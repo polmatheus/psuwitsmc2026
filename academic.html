@@ -3,52 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบวิชาการ - เช็คชื่อรายวิชา</title>
+    <title>ระบบวิชาการ - เช็คชื่อตาม SEC</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
-        body { font-family: 'Sarabun', sans-serif; background-color: #f0f4f8; min-height: 100vh; }
-        .banner { background: linear-gradient(135deg, #0d47a1, #1976d2); color: white; padding: 20px 0; border-radius: 0 0 20px 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }
-        .card-custom { background: white; border-radius: 15px; padding: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        body { font-family: 'Sarabun', sans-serif; background-color: #f8f9fa; }
+        .header-banner { background: linear-gradient(135deg, #1a237e, #283593); color: white; padding: 30px 0; border-radius: 0 0 25px 25px; margin-bottom: 30px; }
+        .filter-card { background: white; border-radius: 15px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 25px; }
+        .student-card { background: white; border-radius: 15px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 20px; }
         
-        .radio-group input[type="radio"] { display: none; }
-        .radio-group label { padding: 6px 12px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: 0.2s; text-align: center; width: 100%; }
-        
-        .radio-group input[value="present"]:checked + label { background-color: #d1e7dd; color: #0f5132; border-color: #badbcc; }
-        .radio-group input[value="absent"]:checked + label { background-color: #f8d7da; color: #842029; border-color: #f5c2c7; }
-        .radio-group input[value="leave"]:checked + label { background-color: #fff3cd; color: #664d03; border-color: #ffecb5; }
-        .radio-group input[value="late"]:checked + label { background-color: #cff4fc; color: #055160; border-color: #b6effb; }
+        /* Custom Radio Buttons */
+        .status-options input[type="radio"] { display: none; }
+        .status-options label { 
+            padding: 8px; border: 1px solid #dee2e6; border-radius: 8px; 
+            cursor: pointer; width: 100%; text-align: center; font-size: 0.9rem; font-weight: 600;
+            transition: all 0.2s;
+        }
+        .status-options input[value="present"]:checked + label { background: #d1e7dd; color: #0f5132; border-color: #a3cfbb; }
+        .status-options input[value="absent"]:checked + label { background: #f8d7da; color: #842029; border-color: #f1aeb5; }
+        .status-options input[value="leave"]:checked + label { background: #fff3cd; color: #664d03; border-color: #ffe69c; }
+        .status-options input[value="late"]:checked + label { background: #cff4fc; color: #055160; border-color: #9eeaf9; }
 
-        .table-responsive { border-radius: 10px; overflow: hidden; }
-        th { background-color: #f8f9fa !important; }
+        .sticky-header { position: sticky; top: 0; background: white; z-index: 100; padding: 10px 0; border-bottom: 1px solid #eee; }
     </style>
 </head>
 <body>
 
-    <div class="banner text-center">
+    <div class="header-banner text-center">
         <div class="container">
-            <h3 class="fw-bold m-0"><i class="bi bi-book-half"></i> Academic Attendance</h3>
-            <p class="m-0 text-white-50">ระบบเช็คชื่อเข้าเรียนรายวิชา (ตาม Sec)</p>
+            <h2 class="fw-bold"><i class="bi bi-journal-check"></i> ระบบเช็คชื่อรายวิชา</h2>
+            <p class="mb-0 opacity-75">จัดการการเข้าเรียนราย SEC และบันทึกผลลงฐานข้อมูลวิชาการ</p>
         </div>
     </div>
 
     <div class="container pb-5">
         
-        <div class="card-custom mb-4">
+        <div class="filter-card mb-4">
             <div class="row g-3">
                 <div class="col-md-3">
-                    <label class="form-label fw-bold text-primary">วันที่สอน</label>
-                    <input type="date" id="checkDate" class="form-control">
+                    <label class="form-label fw-bold">วันที่เรียน</label>
+                    <input type="date" id="checkDate" class="form-control form-control-lg">
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label fw-bold text-primary">Sec</label>
-                    <select id="secNumber" class="form-select">
-                        <option value="">-- เลือก Sec --</option>
+                    <label class="form-label fw-bold">เลือก SEC</label>
+                    <select id="secSelect" class="form-select form-select-lg">
+                        <option value="">-- เลือก SEC --</option>
                         <option value="SEC1">SEC1</option>
                         <option value="SEC2">SEC2</option>
                         <option value="SEC3">SEC3</option>
@@ -62,14 +67,14 @@
                     </select>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label fw-bold text-primary">วิชาที่สอน</label>
-                    <select id="subjectName" class="form-select" onchange="updateTeacherDropdown()">
-                        <option value="">-- กำลังโหลดข้อมูลวิชา... --</option>
+                    <label class="form-label fw-bold">รายวิชา</label>
+                    <select id="subjectSelect" class="form-select form-select-lg" onchange="filterTeachers()">
+                        <option value="">-- เลือกวิชา --</option>
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label fw-bold text-primary">คาบเรียน</label>
-                    <select id="checkPeriod" class="form-select">
+                    <label class="form-label fw-bold">คาบเรียน</label>
+                    <select id="periodSelect" class="form-select form-select-lg">
                         <option value="คาบ 1">คาบ 1</option>
                         <option value="คาบ 2">คาบ 2</option>
                         <option value="คาบ 3">คาบ 3</option>
@@ -81,247 +86,218 @@
                     </select>
                 </div>
                 <div class="col-md-8">
-                    <label class="form-label fw-bold text-primary">ชื่อครูผู้สอน</label>
-                    <select id="teacherName" class="form-select">
-                        <option value="">-- กรุณาเลือกวิชาก่อน --</option>
+                    <label class="form-label fw-bold">ครูผู้สอน</label>
+                    <select id="teacherSelect" class="form-select form-select-lg">
+                        <option value="">-- เลือกครูผู้สอน --</option>
                     </select>
                 </div>
                 <div class="col-md-4 d-flex align-items-end">
-                    <button onclick="loadStudents()" class="btn btn-primary w-100 fw-bold">
-                        <i class="bi bi-person-lines-fill"></i> โหลดรายชื่อนักเรียน
+                    <button onclick="fetchStudentData()" class="btn btn-primary btn-lg w-100 fw-bold">
+                        <i class="bi bi-people-fill"></i> ดึงรายชื่อนักเรียน
                     </button>
                 </div>
             </div>
         </div>
 
-        <div class="card-custom" id="attendanceSection" style="display: none;">
-            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                <h5 class="fw-bold m-0 text-primary" id="tableTitle">รายชื่อนักเรียน</h5>
-                <button onclick="saveAttendance()" class="btn btn-dark rounded-pill fw-bold px-4">
-                    <i class="bi bi-cloud-upload"></i> บันทึกผลการเช็คชื่อ
+        <div id="attendanceArea" style="display: none;">
+            <div class="sticky-header d-flex justify-content-between align-items-center mb-3">
+                <h4 class="fw-bold m-0 text-primary" id="listTitle">รายชื่อนักเรียน</h4>
+                <button onclick="saveToDatabase()" class="btn btn-success btn-lg px-5 fw-bold rounded-pill shadow">
+                    <i class="bi bi-cloud-check"></i> บันทึกข้อมูลทั้งหมด
                 </button>
             </div>
-            
-            <div class="table-responsive border">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="text-center text-secondary small">
-                        <tr>
-                            <th width="15%">รหัส</th>
-                            <th width="35%" class="text-start">ชื่อ - นามสกุล</th>
-                            <th width="50%">สถานะการเข้าเรียน</th>
-                        </tr>
-                    </thead>
-                    <tbody id="studentList"></tbody>
-                </table>
-            </div>
-        </div>
 
-        <div class="text-center mt-4">
-            <a href="index.html" class="text-secondary text-decoration-none"><i class="bi bi-arrow-left"></i> กลับหน้าเมนูหลัก</a>
+            <div class="student-card">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr class="text-center">
+                                <th width="15%">รหัสนักเรียน</th>
+                                <th width="35%" class="text-start">ชื่อ-นามสกุล</th>
+                                <th width="50%">สถานะการเข้าเรียน</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentTbody">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
     </div>
 
     <script>
+        // --- Supabase Config ---
         const SUPABASE_URL = 'https://pqkaqsxmbewilzruogdw.supabase.co'; 
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxa2Fxc3htYmV3aWx6cnVvZ2R3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0ODgzMTksImV4cCI6MjA4NDA2NDMxOX0.TFyfNcFXcUUF29Iexmkjf6EaNIXAv8KuOFY_ydAY_z8'; 
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        document.getElementById('checkDate').valueAsDate = new Date();
+        let masterStudents = [];
+        let masterTeachers = [];
 
-        let currentStudents = [];
-        let teacherDataList = []; 
+        // --- Initial Load ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            document.getElementById('checkDate').valueAsDate = new Date();
+            await loadTeacherData();
+        });
 
-        document.addEventListener('DOMContentLoaded', fetchSubjects);
-
-        async function fetchSubjects() {
-            try {
-                const { data, error } = await client
-                    .from('teachers') 
-                    .select('subject, fullname');
-
-                if (error) throw error;
-
-                // กรองเอาเฉพาะข้อมูลที่มีชื่อวิชา
-                teacherDataList = data.filter(item => item.subject && item.subject.trim() !== '' && item.subject !== 'EMPTY'); 
-
-                // ดึงชื่อวิชาที่ไม่ซ้ำกันมาทำ Dropdown แรก
-                const uniqueSubjects = [...new Set(teacherDataList.map(item => item.subject))];
-
-                let subjectSelect = document.getElementById('subjectName');
-                let html = '<option value="">-- เลือกวิชาที่สอน --</option>';
-                
-                uniqueSubjects.forEach(sub => {
-                    html += `<option value="${sub}">${sub}</option>`;
-                });
-
-                subjectSelect.innerHTML = html;
-
-            } catch (err) {
-                console.error("Error fetching subjects:", err);
-                document.getElementById('subjectName').innerHTML = '<option value="">-- โหลดข้อมูลวิชาล้มเหลว --</option>';
-            }
-        }
-
-        // 🔥 ฟังก์ชันอัปเดต Dropdown ครู ตามวิชาที่เลือก
-        function updateTeacherDropdown() {
-            const selectedSubject = document.getElementById('subjectName').value;
-            const teacherSelect = document.getElementById('teacherName');
-
-            if (!selectedSubject) {
-                teacherSelect.innerHTML = '<option value="">-- กรุณาเลือกวิชาก่อน --</option>';
-                return;
-            }
-
-            // หากลุ่มครูที่สอนวิชานี้ทั้งหมด
-            const matchedTeachers = teacherDataList.filter(t => t.subject === selectedSubject);
+        // 1. ดึงข้อมูลครูมาใส่ Dropdown
+        async function loadTeacherData() {
+            const { data, error } = await client.from('teachers').select('subject, fullname');
+            if (error) { console.error(error); return; }
             
-            // กรองชื่อครูไม่ให้ซ้ำกัน (เผื่อข้อมูลซ้ำในระบบ)
-            const uniqueTeachers = [...new Set(matchedTeachers.map(t => t.fullname))];
-
-            let html = '<option value="">-- เลือกครูผู้สอน --</option>';
-            uniqueTeachers.forEach(teacher => {
-                if(teacher) html += `<option value="${teacher}">${teacher}</option>`;
+            masterTeachers = data;
+            const subjects = [...new Set(data.map(t => t.subject))].filter(s => s && s !== 'EMPTY');
+            
+            const subDropdown = document.getElementById('subjectSelect');
+            subjects.forEach(s => {
+                subDropdown.innerHTML += `<option value="${s}">${s}</option>`;
             });
-
-            teacherSelect.innerHTML = html;
         }
 
-        // ==========================================
-        // ส่วนดึงรายชื่อนักเรียนและบันทึกข้อมูล
-        // ==========================================
+        // 2. กรองครูตามวิชาที่เลือก
+        function filterTeachers() {
+            const selectedSub = document.getElementById('subjectSelect').value;
+            const teacherDropdown = document.getElementById('teacherSelect');
+            teacherDropdown.innerHTML = '<option value="">-- เลือกครูผู้สอน --</option>';
+            
+            const filtered = masterTeachers.filter(t => t.subject === selectedSub);
+            filtered.forEach(t => {
+                teacherDropdown.innerHTML += `<option value="${t.fullname}">${t.fullname}</option>`;
+            });
+        }
 
-        async function loadStudents() {
-            const checkDate = document.getElementById('checkDate').value;
-            const secNum = document.getElementById('secNumber').value;
-            const subject = document.getElementById('subjectName').value.trim();
-            const period = document.getElementById('checkPeriod').value;
+        // 3. ดึงรายชื่อนักเรียนจาก SEC ที่เลือก
+        async function fetchStudentData() {
+            const sec = document.getElementById('secSelect').value;
+            const date = document.getElementById('checkDate').value;
+            const sub = document.getElementById('subjectSelect').value;
+            const period = document.getElementById('periodSelect').value;
 
-            if (!checkDate || !secNum || !subject || !period) {
-                Swal.fire('แจ้งเตือน', 'กรุณาระบุ วันที่, Sec, วิชา และคาบเรียนให้ครบ', 'warning');
+            if (!sec || !sub) {
+                Swal.fire('ข้อมูลไม่ครบ', 'กรุณาเลือก SEC และ รายวิชา', 'warning');
                 return;
             }
 
-            Swal.fire({ title: 'กำลังดึงข้อมูล...', didOpen: () => Swal.showLoading() });
+            Swal.fire({ title: 'กำลังโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
             try {
-                // 1. ดึงรายชื่อเด็กตาม Sec
+                // ดึงรายชื่อเด็กตาม SEC
                 const { data: students, error: err1 } = await client
                     .from('students')
-                    .select('*')
-                    .eq('sec', secNum) 
+                    .select('student_id, fullname')
+                    .eq('sec', sec)
                     .order('student_id', { ascending: true });
 
                 if (err1) throw err1;
 
-                // 2. ดึงข้อมูลที่เคยเช็คไว้
-                const { data: attendance, error: err2 } = await client
+                // เช็คว่าเคยเช็คไปหรือยังในวันนี้/วิชานี้/SEC นี้
+                const { data: history, error: err2 } = await client
                     .from('daily_attendance')
-                    .select('student_id, status, teacher_name')
-                    .eq('check_date', checkDate)
+                    .select('student_id, status')
+                    .eq('check_date', date)
                     .eq('module_type', 'academic')
-                    .eq('target_group', secNum)
-                    .eq('subject_name', subject)
+                    .eq('target_group', sec)
+                    .eq('subject_name', sub)
                     .eq('period', period);
-                
+
                 if (err2) throw err2;
 
-                // ถ้าเคยบันทึกไว้ ให้เลือกชื่อครูใน Dropdown กลับมาเหมือนเดิม
-                if (attendance.length > 0 && attendance[0].teacher_name) {
-                    document.getElementById('teacherName').value = attendance[0].teacher_name;
-                }
+                const historyMap = {};
+                history.forEach(h => historyMap[h.student_id] = h.status);
 
-                let savedStatusMap = {};
-                attendance.forEach(rec => { savedStatusMap[rec.student_id] = rec.status; });
-
-                currentStudents = students;
-                renderTable(students, savedStatusMap, secNum, subject, period);
+                masterStudents = students;
+                renderStudentTable(students, historyMap);
+                
+                document.getElementById('attendanceArea').style.display = 'block';
+                document.getElementById('listTitle').innerText = `รายชื่อนักเรียน ${sec} (${students.length} คน)`;
                 Swal.close();
 
-            } catch (err) {
-                console.error(err);
-                Swal.fire('Error', 'โหลดข้อมูลไม่สำเร็จ', 'error');
+            } catch (e) {
+                Swal.fire('Error', e.message, 'error');
             }
         }
 
-        function renderTable(students, savedStatusMap, secNum, subject, period) {
-            document.getElementById('attendanceSection').style.display = 'block';
-            document.getElementById('tableTitle').innerHTML = `${subject} - <span class="text-primary">${secNum} (${period})</span>`;
+        // 4. แสดงผลตาราง
+        function renderStudentTable(students, historyMap) {
+            const tbody = document.getElementById('studentTbody');
+            tbody.innerHTML = '';
 
-            let html = '';
-            if (students.length === 0) {
-                html = `<tr><td colspan="3" class="text-center py-4 text-muted">ไม่พบนักเรียนใน ${secNum}</td></tr>`;
-            } else {
-                students.forEach(std => {
-                    let currentStatus = savedStatusMap[std.student_id] || 'present';
-                    const statuses = ['present', 'absent', 'leave', 'late'];
-                    const labels = ['มา', 'ขาด', 'ลา', 'สาย'];
-
-                    html += `<tr>
-                        <td class="text-center font-monospace small">${std.student_id}</td>
-                        <td class="fw-bold">${std.fullname}</td>
+            students.forEach(s => {
+                const currentStatus = historyMap[s.student_id] || 'present';
+                const row = `
+                    <tr>
+                        <td class="text-center font-monospace fw-bold text-secondary">${s.student_id}</td>
+                        <td>${s.fullname}</td>
                         <td>
-                            <div class="row g-1 radio-group">
-                                ${statuses.map((s, i) => `
-                                    <div class="col-3">
-                                        <input type="radio" name="status_${std.student_id}" id="${s}_${std.student_id}" value="${s}" ${currentStatus === s ? 'checked' : ''}>
-                                        <label for="${s}_${std.student_id}">${labels[i]}</label>
-                                    </div>
-                                `).join('')}
+                            <div class="row g-1 status-options">
+                                <div class="col-3">
+                                    <input type="radio" name="st_${s.student_id}" id="p_${s.student_id}" value="present" ${currentStatus==='present'?'checked':''}>
+                                    <label for="p_${s.student_id}">มา</label>
+                                </div>
+                                <div class="col-3">
+                                    <input type="radio" name="st_${s.student_id}" id="a_${s.student_id}" value="absent" ${currentStatus==='absent'?'checked':''}>
+                                    <label for="a_${s.student_id}">ขาด</label>
+                                </div>
+                                <div class="col-3">
+                                    <input type="radio" name="st_${s.student_id}" id="l_${s.student_id}" value="leave" ${currentStatus==='leave'?'checked':''}>
+                                    <label for="l_${s.student_id}">ลา</label>
+                                </div>
+                                <div class="col-3">
+                                    <input type="radio" name="st_${s.student_id}" id="t_${s.student_id}" value="late" ${currentStatus==='late'?'checked':''}>
+                                    <label for="t_${s.student_id}">สาย</label>
+                                </div>
                             </div>
                         </td>
-                    </tr>`;
-                });
-            }
-            document.getElementById('studentList').innerHTML = html;
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
         }
 
-        async function saveAttendance() {
-            const checkDate = document.getElementById('checkDate').value;
-            const secNum = document.getElementById('secNumber').value;
-            const subject = document.getElementById('subjectName').value.trim();
-            const period = document.getElementById('checkPeriod').value;
-            const teacher = document.getElementById('teacherName').value; // เอาค่าจาก Dropdown
+        // 5. บันทึกลงตาราง daily_attendance
+        async function saveToDatabase() {
+            const date = document.getElementById('checkDate').value;
+            const sec = document.getElementById('secSelect').value;
+            const sub = document.getElementById('subjectSelect').value;
+            const period = document.getElementById('periodSelect').value;
+            const teacher = document.getElementById('teacherSelect').value;
 
-            // เช็คว่าเลือกครูแล้วหรือยัง
             if (!teacher) {
-                Swal.fire('แจ้งเตือน!', 'กรุณาเลือกชื่อครูผู้สอนก่อนบันทึก', 'warning');
+                Swal.fire('ระบุผู้สอน', 'กรุณาเลือกชื่อครูผู้สอนก่อนบันทึก', 'info');
                 return;
             }
 
-            let recordsToInsert = currentStudents.map(std => {
-                const status = document.querySelector(`input[name="status_${std.student_id}"]:checked`).value;
-                return {
-                    check_date: checkDate,
-                    module_type: 'academic',
-                    student_id: std.student_id,
-                    status: status,
-                    target_group: secNum,
-                    subject_name: subject,
-                    period: period,
-                    teacher_name: teacher
-                };
-            });
+            const payload = masterStudents.map(s => ({
+                check_date: date,
+                module_type: 'academic',
+                student_id: s.student_id,
+                status: document.querySelector(`input[name="st_${s.student_id}"]:checked`).value,
+                target_group: sec,
+                subject_name: sub,
+                period: period,
+                teacher_name: teacher
+            }));
 
             Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
             try {
-                await client.from('daily_attendance')
-                    .delete()
-                    .eq('check_date', checkDate)
+                // ล้างข้อมูลเก่า (Overwrite)
+                await client.from('daily_attendance').delete()
+                    .eq('check_date', date)
                     .eq('module_type', 'academic')
-                    .eq('target_group', secNum)
-                    .eq('subject_name', subject)
+                    .eq('target_group', sec)
+                    .eq('subject_name', sub)
                     .eq('period', period);
 
-                const { error } = await client.from('daily_attendance').insert(recordsToInsert);
+                // บันทึกชุดใหม่
+                const { error } = await client.from('daily_attendance').insert(payload);
                 if (error) throw error;
 
-                Swal.fire({ icon: 'success', title: 'บันทึกเรียบร้อย!', timer: 1500, showConfirmButton: false });
+                Swal.fire({ icon: 'success', title: 'บันทึกเรียบร้อย', timer: 1500, showConfirmButton: false });
 
-            } catch (err) {
-                console.error(err);
-                Swal.fire('Error', 'บันทึกไม่สำเร็จ', 'error');
+            } catch (e) {
+                Swal.fire('Error', e.message, 'error');
             }
         }
     </script>

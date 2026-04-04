@@ -19,7 +19,6 @@
         .radio-group input[type="radio"] { display: none; }
         .radio-group label { padding: 6px 12px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: 0.2s; text-align: center; width: 100%; }
         
-        /* สีของแต่ละสถานะ */
         .radio-group input[value="present"]:checked + label { background-color: #d1e7dd; color: #0f5132; border-color: #badbcc; }
         .radio-group input[value="absent"]:checked + label { background-color: #f8d7da; color: #842029; border-color: #f5c2c7; }
         .radio-group input[value="leave"]:checked + label { background-color: #fff3cd; color: #664d03; border-color: #ffecb5; }
@@ -64,7 +63,9 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label fw-bold text-primary">วิชาที่สอน</label>
-                    <input type="text" id="subjectName" class="form-control" placeholder="เช่น คณิตศาสตร์">
+                    <select id="subjectName" class="form-select" onchange="autoFillTeacher()">
+                        <option value="">-- กำลังโหลดข้อมูลวิชา... --</option>
+                    </select>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label fw-bold text-primary">คาบเรียน</label>
@@ -81,7 +82,7 @@
                 </div>
                 <div class="col-md-8">
                     <label class="form-label fw-bold text-primary">ชื่อครูผู้สอน</label>
-                    <input type="text" id="teacherName" class="form-control" placeholder="ชื่อ-นามสกุล ครูผู้สอน">
+                    <input type="text" id="teacherName" class="form-control bg-light" placeholder="ระบบจะดึงชื่อครูอัตโนมัติเมื่อเลือกวิชา" readonly>
                 </div>
                 <div class="col-md-4 d-flex align-items-end">
                     <button onclick="loadStudents()" class="btn btn-primary w-100 fw-bold">
@@ -127,6 +128,65 @@
         document.getElementById('checkDate').valueAsDate = new Date();
 
         let currentStudents = [];
+        let teacherDataList = []; 
+
+        // 🔥 ดึงรายชื่อวิชาจากตาราง 'teachers'
+        document.addEventListener('DOMContentLoaded', fetchSubjects);
+
+        async function fetchSubjects() {
+            try {
+                // ⚠️ สำคัญ: ตรวจสอบให้แน่ใจว่าชื่อตารางคือ 'teachers' 
+                // และมีคอลัมน์ 'subject', 'fullname' ตามรูป
+                const { data, error } = await client
+                    .from('teachers') 
+                    .select('subject, fullname');
+
+                if (error) throw error;
+
+                // กรองเอาเฉพาะรายการที่มีชื่อวิชา (ไม่เอาที่ว่างๆ หรือ null)
+                teacherDataList = data.filter(item => item.subject && item.subject.trim() !== '' && item.subject !== 'EMPTY'); 
+
+                // กรองชื่อวิชาไม่ให้ซ้ำกัน
+                const uniqueSubjects = [...new Set(teacherDataList.map(item => item.subject))];
+
+                let subjectSelect = document.getElementById('subjectName');
+                let html = '<option value="">-- เลือกวิชาที่สอน --</option>';
+                
+                uniqueSubjects.forEach(sub => {
+                    html += `<option value="${sub}">${sub}</option>`;
+                });
+
+                subjectSelect.innerHTML = html;
+
+            } catch (err) {
+                console.error("Error fetching subjects:", err);
+                document.getElementById('subjectName').innerHTML = '<option value="">-- โหลดข้อมูลวิชาล้มเหลว --</option>';
+            }
+        }
+
+        // 🔥 ฟังก์ชันเติมชื่อครูอัตโนมัติ
+        function autoFillTeacher() {
+            const selectedSubject = document.getElementById('subjectName').value;
+            const teacherInput = document.getElementById('teacherName');
+
+            if (!selectedSubject) {
+                teacherInput.value = '';
+                return;
+            }
+
+            // หาชื่อครู ('fullname') ที่ตรงกับวิชา ('subject')
+            const matchedTeacher = teacherDataList.find(t => t.subject === selectedSubject);
+            
+            if (matchedTeacher) {
+                teacherInput.value = matchedTeacher.fullname;
+            } else {
+                teacherInput.value = ''; 
+            }
+        }
+
+        // ==========================================
+        // ส่วนดึงรายชื่อนักเรียนและบันทึกข้อมูล
+        // ==========================================
 
         async function loadStudents() {
             const checkDate = document.getElementById('checkDate').value;
@@ -151,7 +211,7 @@
 
                 if (err1) throw err1;
 
-                // 2. ดึงข้อมูลที่เคยเช็คไว้ (กรองละเอียดตาม วัน+Sec+วิชา+คาบ)
+                // 2. ดึงข้อมูลที่เคยเช็คไว้
                 const { data: attendance, error: err2 } = await client
                     .from('daily_attendance')
                     .select('student_id, status, teacher_name')
@@ -163,7 +223,7 @@
                 
                 if (err2) throw err2;
 
-                // ถ้ามีข้อมูลเก่า ให้ดึงชื่อครูเดิมขึ้นมาแสดงด้วย
+                // อัปเดตชื่อครู (กรณีโหลดข้อมูลเก่าขึ้นมาดู)
                 if (attendance.length > 0) {
                     document.getElementById('teacherName').value = attendance[0].teacher_name;
                 }
@@ -242,7 +302,7 @@
             Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
             try {
-                // ลบข้อมูลเดิมของ "วัน+Sec+วิชา+คาบ" นี้ทิ้งก่อน (กันข้อมูลซ้ำ)
+                // ลบข้อมูลเดิมทิ้งก่อนบันทึก
                 await client.from('daily_attendance')
                     .delete()
                     .eq('check_date', checkDate)

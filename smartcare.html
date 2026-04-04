@@ -14,7 +14,6 @@
 
     <style>
         body { font-family: 'Sarabun', sans-serif; background-color: #f8f9fa; }
-        /* ธีมสีของ SMART wiTH care */
         .header-banner { background: linear-gradient(135deg, #d84315, #ff8f00); color: white; padding: 30px 0; border-radius: 0 0 25px 25px; margin-bottom: 30px; }
         .filter-card { background: white; border-radius: 15px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 25px; }
         .student-card { background: white; border-radius: 15px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 20px; }
@@ -125,6 +124,10 @@
             </div>
         </div>
 
+        <div class="text-center mt-4">
+            <a href="index.html" class="text-secondary text-decoration-none"><i class="bi bi-arrow-left"></i> กลับหน้าเมนูหลัก</a>
+        </div>
+
     </div>
 
     <script>
@@ -144,17 +147,27 @@
 
         // 1. ดึงข้อมูลหัวข้อ smart_care_share จากตารางครูมาใส่ Dropdown
         async function loadTeacherData() {
-            // ดึงจากตาราง teachers คอลัมน์ smart_care_share และ fullname
-            const { data, error } = await client.from('teachers').select('smart_care_share, fullname');
+            // 🔥 เพิ่ม .range(0, 9999) เพื่อแก้ปัญหาดึงรายชื่อครูมาไม่ครบ 1,000 แถว
+            const { data, error } = await client.from('teachers')
+                .select('smart_care_share, fullname')
+                .range(0, 9999);
+                
             if (error) { console.error(error); return; }
             
-            masterTeachers = data;
+            // 🔥 ทำการ .trim() ข้อมูลทุกตัว เพื่อป้องกันปัญหาเคาะ Spacebar ทิ้งไว้ในฐานข้อมูล
+            masterTeachers = data.map(item => ({
+                smart_care_share: item.smart_care_share ? item.smart_care_share.trim() : '',
+                fullname: item.fullname ? item.fullname.trim() : ''
+            }));
             
-            // กรองเอาเฉพาะข้อมูลที่มีอยู่จริง และไม่ซ้ำกัน
-            const topics = [...new Set(data.map(t => t.smart_care_share))].filter(s => s && s !== 'EMPTY');
+            // กรองเอาเฉพาะข้อมูลที่มีอยู่จริง ไม่ว่างเปล่า
+            const topics = [...new Set(masterTeachers.map(t => t.smart_care_share))].filter(s => s && s !== 'EMPTY');
+            
+            // 🔥 เรียงลำดับตัวอักษรหัวข้อ
+            topics.sort((a, b) => a.localeCompare(b, 'th'));
             
             const dropDown = document.getElementById('smartCareSelect');
-            dropDown.innerHTML = '<option value="">-- เลือกหัวข้อ --</option>'; // รีเซ็ตค่า
+            dropDown.innerHTML = '<option value="">-- เลือกหัวข้อ --</option>';
             topics.forEach(s => {
                 dropDown.innerHTML += `<option value="${s}">${s}</option>`;
             });
@@ -162,14 +175,22 @@
 
         // 2. กรองครูตามหัวข้อที่เลือก
         function filterTeachers() {
-            const selectedTopic = document.getElementById('smartCareSelect').value;
+            // 🔥 ทำการ .trim() ค่าที่เลือกเผื่อไว้
+            const selectedTopic = document.getElementById('smartCareSelect').value.trim();
             const teacherDropdown = document.getElementById('teacherSelect');
             teacherDropdown.innerHTML = '<option value="">-- เลือกครูผู้สอน --</option>';
             
+            if (!selectedTopic) return;
+            
+            // ค้นหาชื่อครูที่สอนวิชานี้
             const filtered = masterTeachers.filter(t => t.smart_care_share === selectedTopic);
             
             // ป้องกันรายชื่อครูซ้ำ
             const uniqueTeachers = [...new Set(filtered.map(t => t.fullname))];
+            
+            // 🔥 เรียงลำดับชื่อครู ก-ฮ จะได้หาง่ายๆ
+            uniqueTeachers.sort((a, b) => a.localeCompare(b, 'th'));
+
             uniqueTeachers.forEach(t => {
                 if(t) teacherDropdown.innerHTML += `<option value="${t}">${t}</option>`;
             });
@@ -191,11 +212,13 @@
 
             try {
                 // ดึงรายชื่อเด็กตาม "บ้าน"
+                // 🔥 เพิ่ม .range() ให้ดึงเด็กได้ไม่จำกัด (กันเหนียวเผื่อเด็กในบ้านเกิน 1,000 คน)
                 const { data: students, error: err1 } = await client
                     .from('students')
                     .select('student_id, fullname')
                     .eq('house', house)
-                    .order('student_id', { ascending: true });
+                    .order('student_id', { ascending: true })
+                    .range(0, 9999);
 
                 if (err1) throw err1;
 
@@ -204,10 +227,11 @@
                     .from('daily_attendance')
                     .select('student_id, status')
                     .eq('check_date', date)
-                    .eq('module_type', 'smart_care') // ใช้แยกจาก academic
+                    .eq('module_type', 'smart_care') 
                     .eq('target_group', house)
-                    .eq('subject_name', topic) // เก็บหัวข้อลงใน subject_name
-                    .eq('period', period);
+                    .eq('subject_name', topic) 
+                    .eq('period', period)
+                    .range(0, 9999);
 
                 if (err2) throw err2;
 

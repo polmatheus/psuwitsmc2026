@@ -63,7 +63,7 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label fw-bold text-primary">วิชาที่สอน</label>
-                    <select id="subjectName" class="form-select" onchange="autoFillTeacher()">
+                    <select id="subjectName" class="form-select" onchange="updateTeacherDropdown()">
                         <option value="">-- กำลังโหลดข้อมูลวิชา... --</option>
                     </select>
                 </div>
@@ -82,7 +82,9 @@
                 </div>
                 <div class="col-md-8">
                     <label class="form-label fw-bold text-primary">ชื่อครูผู้สอน</label>
-                    <input type="text" id="teacherName" class="form-control bg-light" placeholder="ระบบจะดึงชื่อครูอัตโนมัติเมื่อเลือกวิชา" readonly>
+                    <select id="teacherName" class="form-select">
+                        <option value="">-- กรุณาเลือกวิชาก่อน --</option>
+                    </select>
                 </div>
                 <div class="col-md-4 d-flex align-items-end">
                     <button onclick="loadStudents()" class="btn btn-primary w-100 fw-bold">
@@ -130,23 +132,20 @@
         let currentStudents = [];
         let teacherDataList = []; 
 
-        // 🔥 ดึงรายชื่อวิชาจากตาราง 'teachers'
         document.addEventListener('DOMContentLoaded', fetchSubjects);
 
         async function fetchSubjects() {
             try {
-                // ⚠️ สำคัญ: ตรวจสอบให้แน่ใจว่าชื่อตารางคือ 'teachers' 
-                // และมีคอลัมน์ 'subject', 'fullname' ตามรูป
                 const { data, error } = await client
                     .from('teachers') 
                     .select('subject, fullname');
 
                 if (error) throw error;
 
-                // กรองเอาเฉพาะรายการที่มีชื่อวิชา (ไม่เอาที่ว่างๆ หรือ null)
+                // กรองเอาเฉพาะข้อมูลที่มีชื่อวิชา
                 teacherDataList = data.filter(item => item.subject && item.subject.trim() !== '' && item.subject !== 'EMPTY'); 
 
-                // กรองชื่อวิชาไม่ให้ซ้ำกัน
+                // ดึงชื่อวิชาที่ไม่ซ้ำกันมาทำ Dropdown แรก
                 const uniqueSubjects = [...new Set(teacherDataList.map(item => item.subject))];
 
                 let subjectSelect = document.getElementById('subjectName');
@@ -164,24 +163,28 @@
             }
         }
 
-        // 🔥 ฟังก์ชันเติมชื่อครูอัตโนมัติ
-        function autoFillTeacher() {
+        // 🔥 ฟังก์ชันอัปเดต Dropdown ครู ตามวิชาที่เลือก
+        function updateTeacherDropdown() {
             const selectedSubject = document.getElementById('subjectName').value;
-            const teacherInput = document.getElementById('teacherName');
+            const teacherSelect = document.getElementById('teacherName');
 
             if (!selectedSubject) {
-                teacherInput.value = '';
+                teacherSelect.innerHTML = '<option value="">-- กรุณาเลือกวิชาก่อน --</option>';
                 return;
             }
 
-            // หาชื่อครู ('fullname') ที่ตรงกับวิชา ('subject')
-            const matchedTeacher = teacherDataList.find(t => t.subject === selectedSubject);
+            // หากลุ่มครูที่สอนวิชานี้ทั้งหมด
+            const matchedTeachers = teacherDataList.filter(t => t.subject === selectedSubject);
             
-            if (matchedTeacher) {
-                teacherInput.value = matchedTeacher.fullname;
-            } else {
-                teacherInput.value = ''; 
-            }
+            // กรองชื่อครูไม่ให้ซ้ำกัน (เผื่อข้อมูลซ้ำในระบบ)
+            const uniqueTeachers = [...new Set(matchedTeachers.map(t => t.fullname))];
+
+            let html = '<option value="">-- เลือกครูผู้สอน --</option>';
+            uniqueTeachers.forEach(teacher => {
+                if(teacher) html += `<option value="${teacher}">${teacher}</option>`;
+            });
+
+            teacherSelect.innerHTML = html;
         }
 
         // ==========================================
@@ -223,8 +226,8 @@
                 
                 if (err2) throw err2;
 
-                // อัปเดตชื่อครู (กรณีโหลดข้อมูลเก่าขึ้นมาดู)
-                if (attendance.length > 0) {
+                // ถ้าเคยบันทึกไว้ ให้เลือกชื่อครูใน Dropdown กลับมาเหมือนเดิม
+                if (attendance.length > 0 && attendance[0].teacher_name) {
                     document.getElementById('teacherName').value = attendance[0].teacher_name;
                 }
 
@@ -278,10 +281,11 @@
             const secNum = document.getElementById('secNumber').value;
             const subject = document.getElementById('subjectName').value.trim();
             const period = document.getElementById('checkPeriod').value;
-            const teacher = document.getElementById('teacherName').value.trim();
+            const teacher = document.getElementById('teacherName').value; // เอาค่าจาก Dropdown
 
+            // เช็คว่าเลือกครูแล้วหรือยัง
             if (!teacher) {
-                Swal.fire('ลืมใส่ชื่อครู!', 'กรุณาระบุชื่อครูผู้สอนก่อนบันทึก', 'warning');
+                Swal.fire('แจ้งเตือน!', 'กรุณาเลือกชื่อครูผู้สอนก่อนบันทึก', 'warning');
                 return;
             }
 
@@ -302,7 +306,6 @@
             Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
             try {
-                // ลบข้อมูลเดิมทิ้งก่อนบันทึก
                 await client.from('daily_attendance')
                     .delete()
                     .eq('check_date', checkDate)

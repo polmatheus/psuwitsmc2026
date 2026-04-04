@@ -268,6 +268,7 @@
                 return;
             }
 
+            // 🔥 แก้ไขตรงนี้: บันทึกชื่อครูลงใน recorded_by 
             const payload = masterStudents.map(s => ({
                 check_date: date,
                 module_type: 'academic',
@@ -276,7 +277,7 @@
                 target_group: sec,
                 subject_name: sub,
                 period: period,
-                teacher_name: teacher
+                recorded_by: teacher // <--- เปลี่ยนคอลัมน์เป็น recorded_by ตรงนี้ครับ
             }));
 
             Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });

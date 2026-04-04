@@ -14,7 +14,8 @@
 
     <style>
         body { font-family: 'Sarabun', sans-serif; background-color: #f8f9fa; }
-        .header-banner { background: linear-gradient(135deg, #e65100, #ff9800); color: white; padding: 30px 0; border-radius: 0 0 25px 25px; margin-bottom: 30px; }
+        /* ธีมสีของ SMART wiTH care */
+        .header-banner { background: linear-gradient(135deg, #d84315, #ff8f00); color: white; padding: 30px 0; border-radius: 0 0 25px 25px; margin-bottom: 30px; }
         .filter-card { background: white; border-radius: 15px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 25px; }
         .student-card { background: white; border-radius: 15px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 20px; }
         
@@ -37,8 +38,8 @@
 
     <div class="header-banner text-center">
         <div class="container">
-            <h2 class="fw-bold"><i class="bi bi-heart-pulse-fill"></i> SMART wiTH care</h2>
-            <p class="mb-0 opacity-75">ระบบเช็คชื่อตามหมายเลขบ้าน และหัวข้อ SMART wiTH care Share</p>
+            <h2 class="fw-bold"><i class="bi bi-heart-pulse-fill"></i> ระบบเช็คชื่อ SMART wiTH care</h2>
+            <p class="mb-0 opacity-75">จัดการการเข้าเรียนรายบ้าน และบันทึกผลลงฐานข้อมูล</p>
         </div>
     </div>
 
@@ -47,11 +48,11 @@
         <div class="filter-card mb-4">
             <div class="row g-3">
                 <div class="col-md-3">
-                    <label class="form-label fw-bold text-danger">วันที่</label>
+                    <label class="form-label fw-bold">วันที่เรียน</label>
                     <input type="date" id="checkDate" class="form-control form-control-lg">
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label fw-bold text-danger">เลือกบ้าน (House)</label>
+                    <label class="form-label fw-bold">เลือก บ้าน (House)</label>
                     <select id="houseSelect" class="form-select form-select-lg">
                         <option value="">-- เลือกบ้าน --</option>
                         <option value="บ้าน 1">บ้าน 1</option>
@@ -67,13 +68,13 @@
                     </select>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label fw-bold text-danger">SMART wiTH care Share</label>
+                    <label class="form-label fw-bold">SMART wiTH care Share</label>
                     <select id="smartCareSelect" class="form-select form-select-lg" onchange="filterTeachers()">
-                        <option value="">-- เลือกหัวข้อ --</option>
+                        <option value="">-- กำลังโหลดหัวข้อ... --</option>
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label fw-bold text-danger">คาบเรียน</label>
+                    <label class="form-label fw-bold">คาบเรียน</label>
                     <select id="periodSelect" class="form-select form-select-lg">
                         <option value="คาบ 1">คาบ 1</option>
                         <option value="คาบ 2">คาบ 2</option>
@@ -86,13 +87,13 @@
                     </select>
                 </div>
                 <div class="col-md-8">
-                    <label class="form-label fw-bold text-danger">ครูผู้สอน</label>
+                    <label class="form-label fw-bold">ครูผู้สอน</label>
                     <select id="teacherSelect" class="form-select form-select-lg">
                         <option value="">-- เลือกครูผู้สอน --</option>
                     </select>
                 </div>
                 <div class="col-md-4 d-flex align-items-end">
-                    <button onclick="fetchStudentData()" class="btn btn-danger btn-lg w-100 fw-bold">
+                    <button onclick="fetchStudentData()" class="btn btn-warning btn-lg w-100 fw-bold text-dark">
                         <i class="bi bi-people-fill"></i> ดึงรายชื่อนักเรียน
                     </button>
                 </div>
@@ -101,7 +102,7 @@
 
         <div id="attendanceArea" style="display: none;">
             <div class="sticky-header d-flex justify-content-between align-items-center mb-3">
-                <h4 class="fw-bold m-0 text-danger" id="listTitle">รายชื่อนักเรียน</h4>
+                <h4 class="fw-bold m-0 text-dark" id="listTitle">รายชื่อนักเรียน</h4>
                 <button onclick="saveToDatabase()" class="btn btn-success btn-lg px-5 fw-bold rounded-pill shadow">
                     <i class="bi bi-cloud-check"></i> บันทึกข้อมูลทั้งหมด
                 </button>
@@ -124,10 +125,6 @@
             </div>
         </div>
 
-        <div class="text-center mt-4">
-            <a href="index.html" class="text-secondary text-decoration-none"><i class="bi bi-arrow-left"></i> กลับหน้าเมนูหลัก</a>
-        </div>
-
     </div>
 
     <script>
@@ -145,18 +142,21 @@
             await loadTeacherData();
         });
 
-        // 1. ดึงข้อมูลจากคอลัมน์ smart_care_share
+        // 1. ดึงข้อมูลหัวข้อ smart_care_share จากตารางครูมาใส่ Dropdown
         async function loadTeacherData() {
-            // 🔥 ดึง smart_care_share จากตาราง teachers
+            // ดึงจากตาราง teachers คอลัมน์ smart_care_share และ fullname
             const { data, error } = await client.from('teachers').select('smart_care_share, fullname');
             if (error) { console.error(error); return; }
             
             masterTeachers = data;
-            const smartCares = [...new Set(data.map(t => t.smart_care_share))].filter(d => d && d !== 'EMPTY');
+            
+            // กรองเอาเฉพาะข้อมูลที่มีอยู่จริง และไม่ซ้ำกัน
+            const topics = [...new Set(data.map(t => t.smart_care_share))].filter(s => s && s !== 'EMPTY');
             
             const dropDown = document.getElementById('smartCareSelect');
-            smartCares.forEach(d => {
-                dropDown.innerHTML += `<option value="${d}">${d}</option>`;
+            dropDown.innerHTML = '<option value="">-- เลือกหัวข้อ --</option>'; // รีเซ็ตค่า
+            topics.forEach(s => {
+                dropDown.innerHTML += `<option value="${s}">${s}</option>`;
             });
         }
 
@@ -168,14 +168,14 @@
             
             const filtered = masterTeachers.filter(t => t.smart_care_share === selectedTopic);
             
-            // กรองชื่อครูที่ซ้ำกันออก
+            // ป้องกันรายชื่อครูซ้ำ
             const uniqueTeachers = [...new Set(filtered.map(t => t.fullname))];
             uniqueTeachers.forEach(t => {
-                if (t) teacherDropdown.innerHTML += `<option value="${t}">${t}</option>`;
+                if(t) teacherDropdown.innerHTML += `<option value="${t}">${t}</option>`;
             });
         }
 
-        // 3. ดึงรายชื่อนักเรียนจาก "บ้าน" ที่เลือก
+        // 3. ดึงรายชื่อนักเรียนจาก บ้าน ที่เลือก
         async function fetchStudentData() {
             const house = document.getElementById('houseSelect').value;
             const date = document.getElementById('checkDate').value;
@@ -190,7 +190,7 @@
             Swal.fire({ title: 'กำลังโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
             try {
-                // ดึงนักเรียนตาม "บ้าน"
+                // ดึงรายชื่อเด็กตาม "บ้าน"
                 const { data: students, error: err1 } = await client
                     .from('students')
                     .select('student_id, fullname')
@@ -199,12 +199,12 @@
 
                 if (err1) throw err1;
 
-                // เช็คประวัติการเช็คชื่อ
+                // เช็คว่าเคยเช็คไปหรือยังในวันนี้/หัวข้อนี้/บ้านนี้
                 const { data: history, error: err2 } = await client
                     .from('daily_attendance')
                     .select('student_id, status')
                     .eq('check_date', date)
-                    .eq('module_type', 'smart_care') 
+                    .eq('module_type', 'smart_care') // ใช้แยกจาก academic
                     .eq('target_group', house)
                     .eq('subject_name', topic) // เก็บหัวข้อลงใน subject_name
                     .eq('period', period);
@@ -284,13 +284,13 @@
                 target_group: house,
                 subject_name: topic,
                 period: period,
-                recorded_by: teacher // บันทึกชื่อครูลงใน recorded_by
+                recorded_by: teacher // บันทึกชื่อครูลงใน recorded_by 
             }));
 
             Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
             try {
-                // ล้างข้อมูลเก่า
+                // ล้างข้อมูลเก่า (Overwrite) ป้องกันข้อมูลซ้ำ
                 await client.from('daily_attendance').delete()
                     .eq('check_date', date)
                     .eq('module_type', 'smart_care')

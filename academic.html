@@ -37,6 +37,7 @@
 
     <div class="header-banner text-center">
         <div class="container">
+            <img src="https://img2.pic.in.th/pic/PSUWIT_Circle.png" class="logo-circle mb-2" width="100">
             <h2 class="fw-bold"><i class="bi bi-journal-check"></i> ระบบเช็คชื่อรายวิชา</h2>
             <p class="mb-0 opacity-75">จัดการการเข้าเรียนราย SEC และบันทึกผลลงฐานข้อมูลวิชาการ</p>
         </div>
@@ -79,10 +80,6 @@
                         <option value="คาบ 2">คาบ 2</option>
                         <option value="คาบ 3">คาบ 3</option>
                         <option value="คาบ 4">คาบ 4</option>
-                        <option value="คาบ 5">คาบ 5</option>
-                        <option value="คาบ 6">คาบ 6</option>
-                        <option value="คาบ 7">คาบ 7</option>
-                        <option value="คาบ 8">คาบ 8</option>
                     </select>
                 </div>
                 <div class="col-md-8">
@@ -123,6 +120,10 @@
                 </div>
             </div>
         </div>
+        
+        <div class="text-center mt-4">
+            <a href="index.html" class="text-secondary text-decoration-none"><i class="bi bi-arrow-left"></i> กลับหน้าเมนูหลัก</a>
+        </div>
 
     </div>
 
@@ -141,13 +142,20 @@
             await loadTeacherData();
         });
 
-        // 1. ดึงข้อมูลครูมาใส่ Dropdown
+        // 1. ดึงข้อมูลครูมาใส่ Dropdown (เพิ่ม .range แก้ดึงมาไม่ครบ)
         async function loadTeacherData() {
-            const { data, error } = await client.from('teachers').select('subject, fullname');
+            const { data, error } = await client.from('teachers').select('subject, fullname').range(0, 9999);
             if (error) { console.error(error); return; }
             
-            masterTeachers = data;
-            const subjects = [...new Set(data.map(t => t.subject))].filter(s => s && s !== 'EMPTY');
+            // ใช้ Trim ลบเว้นวรรค ป้องกันการหาข้อมูลไม่เจอ
+            masterTeachers = data.map(t => ({
+                subject: t.subject ? t.subject.trim() : '',
+                fullname: t.fullname ? t.fullname.trim() : ''
+            }));
+
+            // กรองวิชาที่ไม่ซ้ำกัน
+            const subjects = [...new Set(masterTeachers.map(t => t.subject))].filter(s => s && s !== 'EMPTY');
+            subjects.sort((a, b) => a.localeCompare(b, 'th'));
             
             const subDropdown = document.getElementById('subjectSelect');
             subjects.forEach(s => {
@@ -162,8 +170,13 @@
             teacherDropdown.innerHTML = '<option value="">-- เลือกครูผู้สอน --</option>';
             
             const filtered = masterTeachers.filter(t => t.subject === selectedSub);
-            filtered.forEach(t => {
-                teacherDropdown.innerHTML += `<option value="${t.fullname}">${t.fullname}</option>`;
+            
+            // กรองชื่อซ้ำและเรียงตัวอักษร
+            const uniqueTeachers = [...new Set(filtered.map(t => t.fullname))].filter(t => t !== '');
+            uniqueTeachers.sort((a, b) => a.localeCompare(b, 'th'));
+
+            uniqueTeachers.forEach(t => {
+                teacherDropdown.innerHTML += `<option value="${t}">${t}</option>`;
             });
         }
 
@@ -182,26 +195,36 @@
             Swal.fire({ title: 'กำลังโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
             try {
-                // ดึงรายชื่อเด็กตาม SEC
-                const { data: students, error: err1 } = await client
+                // ดึงรายชื่อเด็กตาม SEC (ดึงทั้งหมดมาก่อนเพื่อแก้ปัญหาดึงไม่ครบ)
+                const { data: allStudents, error: err1 } = await client
                     .from('students')
-                    .select('student_id, fullname')
-                    .eq('sec', sec)
-                    .order('student_id', { ascending: true });
+                    .select('student_id, fullname, sec')
+                    .range(0, 9999);
 
                 if (err1) throw err1;
 
-                // เช็คว่าเคยเช็คไปหรือยังในวันนี้/วิชานี้/SEC นี้
+                // กรองรายชื่อในฝั่งเว็บแบบแม่นยำ (ลบเว้นวรรค)
+                const safeSec = sec.replace(/\s+/g, '');
+                const students = allStudents
+                    .filter(s => s.sec && s.sec.replace(/\s+/g, '') === safeSec)
+                    .sort((a, b) => a.student_id.localeCompare(b.student_id));
+
+                // เช็คประวัติเก่าเพื่อโชว์สถานะที่เคยเช็ค
                 const { data: history, error: err2 } = await client
                     .from('daily_attendance')
-                    .select('student_id, status')
+                    .select('student_id, status, recorded_by')
                     .eq('check_date', date)
                     .eq('module_type', 'academic')
                     .eq('target_group', sec)
                     .eq('subject_name', sub)
-                    .eq('period', period);
+                    .eq('period', period)
+                    .range(0, 9999);
 
                 if (err2) throw err2;
+
+                if (history.length > 0 && history[0].recorded_by) {
+                    document.getElementById('teacherSelect').value = history[0].recorded_by;
+                }
 
                 const historyMap = {};
                 history.forEach(h => historyMap[h.student_id] = h.status);
@@ -222,6 +245,11 @@
         function renderStudentTable(students, historyMap) {
             const tbody = document.getElementById('studentTbody');
             tbody.innerHTML = '';
+
+            if(students.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-muted">ไม่พบข้อมูลนักเรียนใน ${document.getElementById('secSelect').value}</td></tr>`;
+                return;
+            }
 
             students.forEach(s => {
                 const currentStatus = historyMap[s.student_id] || 'present';
@@ -264,11 +292,11 @@
             const teacher = document.getElementById('teacherSelect').value;
 
             if (!teacher) {
-                Swal.fire('ระบุผู้สอน', 'กรุณาเลือกชื่อครูผู้สอนก่อนบันทึก', 'info');
+                Swal.fire('ระบุผู้สอน', 'กรุณาเลือกชื่อครูผู้สอนก่อนบันทึก', 'warning');
                 return;
             }
+            if (masterStudents.length === 0) return;
 
-            // 🔥 แก้ไขตรงนี้: บันทึกชื่อครูลงใน recorded_by 
             const payload = masterStudents.map(s => ({
                 check_date: date,
                 module_type: 'academic',
@@ -277,13 +305,13 @@
                 target_group: sec,
                 subject_name: sub,
                 period: period,
-                recorded_by: teacher // <--- เปลี่ยนคอลัมน์เป็น recorded_by ตรงนี้ครับ
+                recorded_by: teacher 
             }));
 
             Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
             try {
-                // ล้างข้อมูลเก่า (Overwrite)
+                // 🔥 ล้างข้อมูลเก่า (Overwrite): จะลบข้อมูลที่มีเงื่อนไขตรงกันทั้งหมดทิ้งก่อน ทำให้ได้เฉพาะข้อมูลล่าสุดเสมอ
                 await client.from('daily_attendance').delete()
                     .eq('check_date', date)
                     .eq('module_type', 'academic')
@@ -295,7 +323,7 @@
                 const { error } = await client.from('daily_attendance').insert(payload);
                 if (error) throw error;
 
-                Swal.fire({ icon: 'success', title: 'บันทึกเรียบร้อย', timer: 1500, showConfirmButton: false });
+                Swal.fire({ icon: 'success', title: 'บันทึกข้อมูลล่าสุดเรียบร้อย', timer: 1500, showConfirmButton: false });
 
             } catch (e) {
                 Swal.fire('Error', e.message, 'error');

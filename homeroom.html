@@ -32,8 +32,8 @@
 
     <div class="banner text-center">
         <div class="container">
-             <img src="https://img2.pic.in.th/pic/PSUWIT_Circle.png" class="logo-circle" width = "120">
-            <h2 class="fw-bold m-0"><i class="bi bi-house-door-fill"></i> Homeroom Attendance</h2>
+             <img src="https://img2.pic.in.th/pic/PSUWIT_Circle.png" class="logo-circle" width="120">
+            <h2 class="fw-bold m-0 mt-2"><i class="bi bi-house-door-fill"></i> Homeroom Attendance</h2>
             <p class="m-0 text-white-50 mt-1">ระบบเช็คชื่อHomeroom (รอบเช้า-บ่าย)</p>
         </div>
     </div>
@@ -47,7 +47,7 @@
                     <input type="date" id="checkDate" class="form-control" required>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label fw-bold text-success">ช่วง/label>
+                    <label class="form-label fw-bold text-success">ช่วง</label>
                     <select id="checkPeriod" class="form-select" required>
                         <option value="เช้า">รอบเช้า</option>
                         <option value="บ่าย">รอบบ่าย</option>
@@ -167,7 +167,7 @@
             const houseNum = document.getElementById('houseNumber').value;
 
             if (!checkDate || !houseNum || !checkPeriod) {
-                Swal.fire('แจ้งเตือน', 'กรุณาเลือกวันที่ รอบเวลา และบ้าน ให้ครบถ้วน', 'warning');
+                Swal.fire('แจ้งเตือน', 'กรุณาเลือกวันที่ ช่วงเวลา และบ้าน ให้ครบถ้วน', 'warning');
                 return;
             }
 
@@ -187,13 +187,14 @@
                     .filter(std => std.house && std.house.replace(/\s+/g, '') === searchHouseSafe)
                     .sort((a, b) => a.student_id.localeCompare(b.student_id));
 
+                // ค้นหาประวัติจาก period (เช้า/บ่าย) เหมือนเดิม
                 const { data: attendance, error: err2 } = await client
                     .from('daily_attendance')
                     .select('student_id, status, recorded_by')
                     .eq('check_date', checkDate)
                     .eq('module_type', 'homeroom')
                     .eq('target_group', houseNum)
-                    .eq('period', checkPeriod)
+                    .eq('period', checkPeriod) // กลับมาใช้ period เป็นเงื่อนไขหลักในการค้นหาประวัติ
                     .range(0, 9999);
                 
                 if (err2) throw err2;
@@ -274,7 +275,7 @@
 
             if (currentStudents.length === 0) return;
 
-            // ตั้งค่า subject_name ตามรอบ (เช้า = mh, บ่าย = eh) เพื่อไว้ทำ Dashboard
+            // 🔥 กำหนดให้ subject_name เป็น mh หรือ eh ควบคู่ไปกับการเก็บค่า period แบบเดิม
             const subjectVal = checkPeriod === 'เช้า' ? 'mh' : 'eh';
 
             let recordsToInsert = [];
@@ -287,8 +288,8 @@
                     student_id: std.student_id,
                     status: status,
                     target_group: houseNum,
-                    period: checkPeriod, 
-                    subject_name: subjectVal, 
+                    period: checkPeriod, // ยังคงบันทึก "เช้า" หรือ "บ่าย" ตามเดิม!
+                    subject_name: subjectVal, // และแถม mh หรือ eh ลงใน subject_name ด้วย!
                     recorded_by: teacher 
                 });
             });
@@ -296,7 +297,7 @@
             Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
             try {
-                // ระบบป้องกันข้อมูลซ้ำ (Overwrite)
+                // ระบบป้องกันข้อมูลซ้ำ (Overwrite) โดยลบจาก period เดิมออกก่อน
                 await client.from('daily_attendance')
                     .delete()
                     .eq('check_date', checkDate)

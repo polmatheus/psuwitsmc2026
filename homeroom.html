@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Homeroom - เช็คชื่อตามบ้าน (เช้า-บ่าย)</title>
+    <title>Homeroom (เช้า-บ่าย)</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -19,7 +19,6 @@
         .radio-group input[type="radio"] { display: none; }
         .radio-group label { padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: bold; transition: 0.2s; text-align: center; width: 100%; }
         
-        /* สีของแต่ละสถานะ */
         .radio-group input[value="present"]:checked + label { background-color: #d1e7dd; color: #0f5132; border-color: #badbcc; }
         .radio-group input[value="absent"]:checked + label { background-color: #f8d7da; color: #842029; border-color: #f5c2c7; }
         .radio-group input[value="leave"]:checked + label { background-color: #fff3cd; color: #664d03; border-color: #ffecb5; }
@@ -35,7 +34,7 @@
         <div class="container">
              <img src="https://img2.pic.in.th/pic/PSUWIT_Circle.png" class="logo-circle" width = "120">
             <h2 class="fw-bold m-0"><i class="bi bi-house-door-fill"></i> Homeroom Attendance</h2>
-            <p class="m-0 text-white-50 mt-1">ระบบเช็คชื่อHomeroom(รอบเช้า-บ่าย)</p>
+            <p class="m-0 text-white-50 mt-1">ระบบเช็คชื่อHomeroom (รอบเช้า-บ่าย)</p>
         </div>
     </div>
 
@@ -56,7 +55,7 @@
                 </div>
                 <div class="col-md-2">
                     <label class="form-label fw-bold text-success">บ้าน (House)</label>
-                    <select id="houseNumber" class="form-select" required>
+                    <select id="houseNumber" class="form-select" onchange="filterTeachers()" required>
                         <option value="">-- เลือกบ้าน --</option>
                         <option value="บ้าน 1">บ้าน 1</option>
                         <option value="บ้าน 2">บ้าน 2</option>
@@ -73,7 +72,7 @@
                 <div class="col-md-4">
                     <label class="form-label fw-bold text-success">ครูผู้บันทึก</label>
                     <select id="teacherSelect" class="form-select" required>
-                        <option value="">-- กำลังโหลดรายชื่อครู... --</option>
+                        <option value="">-- กรุณาเลือกบ้านก่อน --</option>
                     </select>
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
@@ -114,41 +113,55 @@
     </div>
 
     <script>
-        // ⚠️ ใส่ URL และ KEY ของ Supabase ของคุณ
         const SUPABASE_URL = 'https://pqkaqsxmbewilzruogdw.supabase.co'; 
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxa2Fxc3htYmV3aWx6cnVvZ2R3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0ODgzMTksImV4cCI6MjA4NDA2NDMxOX0.TFyfNcFXcUUF29Iexmkjf6EaNIXAv8KuOFY_ydAY_z8'; 
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let currentStudents = [];
+        let masterTeachers = []; // เก็บข้อมูลครูทั้งหมด
 
         document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('checkDate').valueAsDate = new Date();
-            await loadAllTeachers();
+            await loadTeacherData();
         });
 
-        // 🔥 ฟังก์ชันโหลดรายชื่อครูทั้งหมดมาแสดงใน Dropdown
-        async function loadAllTeachers() {
+        // 🔥 ดึงข้อมูลครูทั้งหมด รวมถึงข้อมูล "บ้าน (house)" มาเก็บไว้
+        async function loadTeacherData() {
             try {
-                // ใส่ .range(0, 9999) เพื่อดึงข้อมูลมาให้ครบทุกคน
-                const { data, error } = await client.from('teachers').select('fullname').range(0, 9999);
+                // ดึงคอลัมน์ house และ fullname จากตาราง teachers 
+                const { data, error } = await client.from('teachers').select('house, fullname').range(0, 9999);
                 if (error) throw error;
 
-                // กรองชื่อซ้ำ ลบช่องว่าง และตัดค่าว่างทิ้ง
-                const uniqueTeachers = [...new Set(data.map(t => t.fullname ? t.fullname.trim() : ''))].filter(t => t !== '');
-                
-                // เรียง ก-ฮ
-                uniqueTeachers.sort((a, b) => a.localeCompare(b, 'th'));
+                masterTeachers = data.map(item => ({
+                    house: item.house ? item.house.trim() : '',
+                    fullname: item.fullname ? item.fullname.trim() : ''
+                }));
 
-                const teacherSelect = document.getElementById('teacherSelect');
-                teacherSelect.innerHTML = '<option value="">-- เลือกครูผู้บันทึก --</option>';
-                
-                uniqueTeachers.forEach(t => {
-                    teacherSelect.innerHTML += `<option value="${t}">${t}</option>`;
-                });
             } catch (err) {
                 console.error("Error loading teachers:", err);
-                document.getElementById('teacherSelect').innerHTML = '<option value="">-- โหลดข้อมูลล้มเหลว --</option>';
+                document.getElementById('teacherSelect').innerHTML = '<option value="">-- โหลดข้อมูลครูล้มเหลว --</option>';
             }
+        }
+
+        // 🔥 กรองรายชื่อครู ตาม "บ้าน" ที่เลือก
+        function filterTeachers() {
+            const selectedHouse = document.getElementById('houseNumber').value;
+            const teacherSelect = document.getElementById('teacherSelect');
+            
+            teacherSelect.innerHTML = '<option value="">-- เลือกครูผู้บันทึก --</option>';
+
+            if (!selectedHouse) return;
+
+            // กรองครูเฉพาะคนที่อยู่บ้านที่เลือก
+            const filtered = masterTeachers.filter(t => t.house === selectedHouse);
+            
+            // ป้องกันชื่อครูซ้ำซ้อน และเรียง ก-ฮ
+            const uniqueTeachers = [...new Set(filtered.map(t => t.fullname))].filter(t => t !== '');
+            uniqueTeachers.sort((a, b) => a.localeCompare(b, 'th'));
+
+            uniqueTeachers.forEach(t => {
+                teacherSelect.innerHTML += `<option value="${t}">${t}</option>`;
+            });
         }
 
         async function loadStudents() {
@@ -164,7 +177,6 @@
             Swal.fire({ title: 'กำลังโหลดข้อมูล...', didOpen: () => Swal.showLoading() });
 
             try {
-                // 1. ดึงรายชื่อนักเรียน (ใส่ range กันเหนียวเผื่อเด็กเยอะ)
                 const { data: students, error: err1 } = await client
                     .from('students')
                     .select('*')
@@ -174,7 +186,6 @@
 
                 if (err1) throw err1;
 
-                // 2. ดึงประวัติที่เคยเช็คไว้
                 const { data: attendance, error: err2 } = await client
                     .from('daily_attendance')
                     .select('student_id, status, recorded_by')
@@ -186,12 +197,11 @@
                 
                 if (err2) throw err2;
 
-                // อัปเดตช่องครูผู้บันทึก (กรณีดึงประวัติเก่ามาแก้)
+                // หากดึงประวัติเก่ามา ให้แสดงชื่อครูคนเดิม
                 if (attendance.length > 0 && attendance[0].recorded_by) {
                     document.getElementById('teacherSelect').value = attendance[0].recorded_by;
                 }
 
-                // สร้าง Map เก็บสถานะเก่า
                 let savedStatusMap = {};
                 attendance.forEach(rec => { savedStatusMap[rec.student_id] = rec.status; });
 
@@ -276,7 +286,7 @@
                     status: status,
                     target_group: houseNum,
                     period: checkPeriod, 
-                    recorded_by: teacher // 🔥 บันทึกชื่อครูลงฐานข้อมูลแล้ว
+                    recorded_by: teacher 
                 });
             });
 

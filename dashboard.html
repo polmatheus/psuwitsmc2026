@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - สรุปการเช็คชื่อรายวัน</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background-color: #f4f6f9; min-height: 100vh; }
+        .header-banner { background: linear-gradient(135deg, #1e293b, #334155); color: white; padding: 25px 0; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        .card-custom { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: none; margin-bottom: 30px; }
+        
+        /* สไตล์ตาราง Dashboard */
+        .table-dash th { background-color: #1e293b; color: white; text-align: center; vertical-align: middle; padding: 12px; border: 1px solid #334155;}
+        .table-dash td { vertical-align: middle; padding: 8px; border: 1px solid #e2e8f0; }
+        .col-title { background-color: #f8fafc; font-weight: 700; width: 12%; text-align: center; border-right: 2px solid #cbd5e1 !important; }
+
+        /* กล่องสถานะ เช็คแล้ว / ยังไม่เช็ค */
+        .status-box { padding: 10px 5px; border-radius: 8px; text-align: center; display: flex; flex-direction: column; justify-content: center; min-height: 80px; }
+        .status-box.checked { background-color: #e8f5e9; color: #1b5e20; border: 1px solid #c8e6c9; }
+        .status-box.pending { background-color: #ffebee; color: #b71c1c; border: 1px solid #ffcdd2; }
+        
+        /* ตัวหนังสือสถิติ (P/A/L/T) */
+        .stats-text { margin-top: 5px; font-size: 0.8rem; font-weight: bold; background: white; padding: 3px 0; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);}
+        .stat-p { color: #2e7d32; margin: 0 3px;}
+        .stat-a { color: #c62828; margin: 0 3px;}
+        .stat-l { color: #f9a825; margin: 0 3px;}
+        .stat-t { color: #0277bd; margin: 0 3px;}
+        .teacher-name { font-size: 0.7rem; color: #64748b; margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; margin-left: auto; margin-right: auto;}
+    </style>
+</head>
+<body>
+
+    <div class="header-banner text-center">
+        <div class="container d-flex align-items-center justify-content-center gap-3">
+            <h2 class="fw-bold m-0"><i class="bi bi-bar-chart-fill text-warning"></i> Dashboard สรุปการเช็คชื่อ</h2>
+        </div>
+    </div>
+
+    <div class="container-fluid px-4 pb-5">
+        
+        <div class="card-custom text-center mx-auto" style="max-width: 400px;">
+            <label class="form-label fw-bold text-secondary">เลือกวันที่ต้องการดูรายงาน</label>
+            <div class="input-group">
+                <input type="date" id="dashDate" class="form-control form-control-lg text-center fw-bold text-primary">
+                <button class="btn btn-primary px-4 fw-bold" onclick="fetchDashboardData()"><i class="bi bi-search"></i> ค้นหา</button>
+            </div>
+        </div>
+
+        <div class="card-custom">
+            <h4 class="fw-bold mb-3 text-success"><i class="bi bi-house-heart-fill"></i> สรุปการเช็คชื่อตามบ้าน (Homeroom & SMART wiTH care)</h4>
+            <div class="table-responsive">
+                <table class="table table-dash w-100">
+                    <thead>
+                        <tr>
+                            <th class="col-title bg-success text-white border-success">กลุ่ม / บ้าน</th>
+                            <th>Homeroom เช้า</th>
+                            <th>คาบ 1 (09:00 - 10:20)</th>
+                            <th>คาบ 2 (10:30 - 11:50)</th>
+                            <th>คาบ 3 (13:00 - 14:20)</th>
+                            <th>คาบ 4 (14:30 - 15:50)</th>
+                            <th>Homeroom บ่าย</th>
+                        </tr>
+                    </thead>
+                    <tbody id="houseTableBody">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card-custom mt-4">
+            <h4 class="fw-bold mb-3 text-primary"><i class="bi bi-journal-bookmark-fill"></i> สรุปการเช็คชื่อรายวิชา (ตาม SEC)</h4>
+            <div class="table-responsive">
+                <table class="table table-dash w-100">
+                    <thead>
+                        <tr>
+                            <th class="col-title bg-primary text-white border-primary">กลุ่มเรียน (SEC)</th>
+                            <th>คาบ 1 (09:00 - 10:20)</th>
+                            <th>คาบ 2 (10:30 - 11:50)</th>
+                            <th>คาบ 3 (13:00 - 14:20)</th>
+                            <th>คาบ 4 (14:30 - 15:50)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="secTableBody">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="index.html" class="btn btn-secondary rounded-pill px-4"><i class="bi bi-arrow-left"></i> กลับหน้าเมนูหลัก</a>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Supabase Config ---
+        const SUPABASE_URL = 'https://pqkaqsxmbewilzruogdw.supabase.co'; 
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxa2Fxc3htYmV3aWx6cnVvZ2R3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0ODgzMTksImV4cCI6MjA4NDA2NDMxOX0.TFyfNcFXcUUF29Iexmkjf6EaNIXAv8KuOFY_ydAY_z8'; 
+        const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('dashDate').valueAsDate = new Date();
+            fetchDashboardData();
+        });
+
+        // รายชื่อบ้าน และ SEC ทั้งหมด
+        const houseList = ['บ้าน1', 'บ้าน2', 'บ้าน3', 'บ้าน4', 'บ้าน5', 'บ้าน6', 'บ้าน7', 'บ้าน8', 'บ้าน9', 'บ้าน10'];
+        const secList = ['SEC1', 'SEC2', 'SEC3', 'SEC4', 'SEC5', 'SEC6', 'SEC7', 'SEC8', 'SEC9', 'SEC10'];
+        const housePeriods = ['เช้า', 'คาบ 1', 'คาบ 2', 'คาบ 3', 'คาบ 4', 'บ่าย'];
+        const secPeriods = ['คาบ 1', 'คาบ 2', 'คาบ 3', 'คาบ 4'];
+
+        async function fetchDashboardData() {
+            const dateStr = document.getElementById('dashDate').value;
+            if(!dateStr) return;
+
+            Swal.fire({ title: 'กำลังโหลดข้อมูลสรุป...', didOpen: () => Swal.showLoading() });
+
+            try {
+                // ดึงข้อมูลการเช็คชื่อทั้งหมดของวันนี้
+                const { data: records, error } = await client
+                    .from('daily_attendance')
+                    .select('target_group, period, status, recorded_by')
+                    .eq('check_date', dateStr)
+                    .range(0, 9999);
+
+                if (error) throw error;
+
+                // จัดกลุ่มข้อมูล: Map["กลุ่ม_คาบ"] = { present: 0, absent: 0, leave: 0, late: 0, teacher: '' }
+                let attendanceMap = {};
+                
+                records.forEach(row => {
+                    const key = `${row.target_group}_${row.period}`;
+                    if (!attendanceMap[key]) {
+                        attendanceMap[key] = { present: 0, absent: 0, leave: 0, late: 0, recorded_by: row.recorded_by };
+                    }
+                    attendanceMap[key][row.status]++;
+                });
+
+                renderHouseTable(attendanceMap);
+                renderSecTable(attendanceMap);
+                
+                Swal.close();
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Error', 'ไม่สามารถโหลดข้อมูล Dashboard ได้', 'error');
+            }
+        }
+
+        // ฟังก์ชันสร้าง UI กล่องสถานะ
+        function buildCell(target, period, map) {
+            const key = `${target}_${period}`;
+            const data = map[key];
+
+            if (data) {
+                // กรณี: เช็คชื่อแล้ว (สีเขียว)
+                return `
+                    <div class="status-box checked shadow-sm">
+                        <div class="fw-bold"><i class="bi bi-check-circle-fill"></i> เช็คแล้ว</div>
+                        <div class="stats-text">
+                            <span class="stat-p">P:${data.present}</span> 
+                            <span class="stat-a">A:${data.absent}</span> 
+                            <span class="stat-l">L:${data.leave}</span> 
+                            <span class="stat-t">T:${data.late}</span>
+                        </div>
+                        <div class="teacher-name" title="${data.recorded_by}">${data.recorded_by || 'ไม่ระบุผู้บันทึก'}</div>
+                    </div>
+                `;
+            } else {
+                // กรณี: ยังไม่เช็คชื่อ (สีแดง)
+                return `
+                    <div class="status-box pending shadow-sm">
+                        <div class="fw-bold"><i class="bi bi-exclamation-circle-fill"></i> ยังไม่เช็ค</div>
+                        <div class="small opacity-75 mt-1">รอการบันทึก</div>
+                    </div>
+                `;
+            }
+        }
+
+        // วาดตารางฝั่ง "บ้าน"
+        function renderHouseTable(map) {
+            const tbody = document.getElementById('houseTableBody');
+            tbody.innerHTML = '';
+            
+            houseList.forEach(house => {
+                let rowHtml = `<tr><td class="col-title text-success">${house}</td>`;
+                housePeriods.forEach(period => {
+                    rowHtml += `<td>${buildCell(house, period, map)}</td>`;
+                });
+                rowHtml += `</tr>`;
+                tbody.innerHTML += rowHtml;
+            });
+        }
+
+        // วาดตารางฝั่ง "SEC"
+        function renderSecTable(map) {
+            const tbody = document.getElementById('secTableBody');
+            tbody.innerHTML = '';
+            
+            secList.forEach(sec => {
+                let rowHtml = `<tr><td class="col-title text-primary">${sec}</td>`;
+                secPeriods.forEach(period => {
+                    rowHtml += `<td>${buildCell(sec, period, map)}</td>`;
+                });
+                rowHtml += `</tr>`;
+                tbody.innerHTML += rowHtml;
+            });
+        }
+    </script>
+</body>
+</html>

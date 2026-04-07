@@ -16,7 +16,7 @@
         .header-banner { background: linear-gradient(135deg, #1e293b, #334155); color: white; padding: 25px 0; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }
         .card-custom { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: none; margin-bottom: 30px; }
         
-        /* สไตล์ตารางตารางกะเวลา Dashboard */
+        /* สไตล์ตารางกะเวลา Dashboard */
         .table-dash th { background-color: #1e293b; color: white; text-align: center; vertical-align: middle; padding: 12px; border: 1px solid #334155;}
         .table-dash td { vertical-align: middle; padding: 8px; border: 1px solid #e2e8f0; }
         .col-title { background-color: #f8fafc; font-weight: 700; width: 12%; text-align: center; border-right: 2px solid #cbd5e1 !important; }
@@ -32,7 +32,7 @@
         .stat-t { color: #0277bd; margin: 0 3px;}
         .teacher-name { font-size: 0.7rem; color: #64748b; margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; margin-left: auto; margin-right: auto;}
 
-        /* กล่องสถิติและตารางสรุป */
+        /* กล่องสถิติขนาดเล็ก */
         .summary-box-sm { border-radius: 12px; padding: 15px 10px; text-align: center; color: white; box-shadow: 0 4px 8px rgba(0,0,0,0.1); transition: transform 0.2s;}
         .summary-box-sm:hover { transform: translateY(-3px); }
         .bg-p { background: linear-gradient(135deg, #2e7d32, #4caf50); }
@@ -42,9 +42,6 @@
         .bg-total { background: linear-gradient(135deg, #37474f, #607d8b); }
         .summary-val-sm { font-size: 2rem; font-weight: 700; line-height: 1; margin: 5px 0; }
         .summary-label-sm { font-size: 0.9rem; font-weight: 600; opacity: 0.9; }
-
-        .table-sum th { background-color: #f3e5f5; color: #4a148c; text-align: center; border-bottom: 2px solid #ce93d8;}
-        .table-sum td { text-align: center; vertical-align: middle; font-weight: 600; font-size: 1.1rem; }
     </style>
 </head>
 <body>
@@ -68,12 +65,12 @@
         </div>
 
         <div class="card-custom" id="summarySection" style="display: none; border-top: 5px solid #9c27b0;">
-            <h4 class="fw-bold mb-4" style="color: #4a148c;"><i class="bi bi-pie-chart-fill"></i> สรุปสถิติรายวัน</h4>
+            <h4 class="fw-bold mb-4" style="color: #4a148c;"><i class="bi bi-pie-chart-fill"></i> สรุปสถิติรายวัน (เฉพาะกลุ่มบ้าน)</h4>
             
-            <div class="row g-3 mb-4">
+            <div class="row g-3">
                 <div class="col-md col-6">
                     <div class="summary-box-sm bg-total">
-                        <div class="summary-label-sm">ทั้งหมด</div>
+                        <div class="summary-label-sm">ยอดบันทึก (บ้าน)</div>
                         <div class="summary-val-sm" id="dash-tot-all">0</div>
                     </div>
                 </div>
@@ -102,8 +99,7 @@
                     </div>
                 </div>
             </div>
-
-            
+        </div>
 
         <div class="card-custom">
             <h4 class="fw-bold mb-3 text-success"><i class="bi bi-house-heart-fill"></i> สถานะการเช็คชื่อตามบ้าน (Homeroom & SMART wiTH care)</h4>
@@ -197,20 +193,15 @@
                     }
                 }
 
-                // 1. จัดเตรียมตัวแปรสำหรับตารางกะเวลา (เขียว/แดง)
                 let attendanceMap = {};
-                
-                // 2. จัดเตรียมตัวแปรสำหรับสรุปสถิติ (เฉพาะบ้าน)
                 let overall = { p: 0, a: 0, l: 0, t: 0, total: 0 };
-                let houseStats = {};
-                houseList.forEach(h => houseStats[h.toUpperCase()] = { p: 0, a: 0, l: 0, t: 0, total: 0 });
                 
                 allRecords.forEach(row => {
                     const safeTargetGroup = row.target_group ? String(row.target_group).replace(/\s+/g, '').toUpperCase() : '';
                     const safePeriod = row.period ? String(row.period).replace(/\s+/g, '').toUpperCase() : '';
                     const rawStatus = row.status ? String(row.status).toLowerCase().trim() : '';
                     
-                    // -- บันทึกข้อมูลลงตารางกะเวลา --
+                    // บันทึกข้อมูลลง Map สำหรับแสดงตาราง
                     const key = `${safeTargetGroup}_${safePeriod}`;
                     if (!attendanceMap[key]) {
                         attendanceMap[key] = { present: 0, absent: 0, leave: 0, late: 0, recorded_by: row.recorded_by };
@@ -219,22 +210,27 @@
                         attendanceMap[key][rawStatus]++;
                     }
 
-                    // -- บันทึกข้อมูลสถิติ (เอาเฉพาะข้อมูลของ "บ้าน") --
-                    if (safeTargetGroup.startsWith('บ้าน') && houseStats[safeTargetGroup]) {
-                        if (rawStatus === 'present') { overall.p++; houseStats[safeTargetGroup].p++; }
-                        else if (rawStatus === 'absent') { overall.a++; houseStats[safeTargetGroup].a++; }
-                        else if (rawStatus === 'leave') { overall.l++; houseStats[safeTargetGroup].l++; }
-                        else if (rawStatus === 'late') { overall.t++; houseStats[safeTargetGroup].t++; }
+                    // บันทึกข้อมูลสถิติ (เอาเฉพาะข้อมูลของ "บ้าน")
+                    if (safeTargetGroup.startsWith('บ้าน')) {
+                        if (rawStatus === 'present') overall.p++;
+                        else if (rawStatus === 'absent') overall.a++;
+                        else if (rawStatus === 'leave') overall.l++;
+                        else if (rawStatus === 'late') overall.t++;
                         
                         if (['present', 'absent', 'leave', 'late'].includes(rawStatus)) {
                             overall.total++;
-                            houseStats[safeTargetGroup].total++;
                         }
                     }
                 });
 
-                // วาด UI
-                renderSummaryTable(overall, houseStats);
+                // อัปเดตกล่องสถิติ
+                document.getElementById('dash-tot-all').innerText = overall.total.toLocaleString();
+                document.getElementById('dash-tot-p').innerText = overall.p.toLocaleString();
+                document.getElementById('dash-tot-a').innerText = overall.a.toLocaleString();
+                document.getElementById('dash-tot-l').innerText = overall.l.toLocaleString();
+                document.getElementById('dash-tot-t').innerText = overall.t.toLocaleString();
+
+                // อัปเดตตารางด้านล่าง
                 renderHouseTable(attendanceMap);
                 renderSecTable(attendanceMap);
                 
@@ -243,44 +239,19 @@
                 if (allRecords.length === 0) {
                     Swal.fire({ icon: 'info', title: 'ไม่พบข้อมูล', text: `ยังไม่มีการบันทึกข้อมูลในวันที่ ${dateStr}`, timer: 2000, showConfirmButton: false });
                 } else {
-                    Swal.close();
+                    Swal.fire({ 
+                        icon: 'success', 
+                        title: 'โหลดสำเร็จ!', 
+                        text: `ประมวลผลข้อมูลทั้งหมด ${allRecords.length.toLocaleString()} รายการ`, 
+                        timer: 2000, 
+                        showConfirmButton: false 
+                    });
                 }
 
             } catch (err) {
                 console.error(err);
                 Swal.fire('Error', 'ไม่สามารถโหลดข้อมูล Dashboard ได้', 'error');
             }
-        }
-
-        // ฟังก์ชันวาดตารางสถิติสรุปรายบ้าน
-        function renderSummaryTable(overall, houseStats) {
-            // อัปเดตกล่องตัวเลข
-            document.getElementById('dash-tot-all').innerText = overall.total.toLocaleString();
-            document.getElementById('dash-tot-p').innerText = overall.p.toLocaleString();
-            document.getElementById('dash-tot-a').innerText = overall.a.toLocaleString();
-            document.getElementById('dash-tot-l').innerText = overall.l.toLocaleString();
-            document.getElementById('dash-tot-t').innerText = overall.t.toLocaleString();
-
-            // อัปเดตตารางรายบ้าน
-            const tbody = document.getElementById('dailySummaryBody');
-            tbody.innerHTML = '';
-
-            houseList.forEach(house => {
-                const hKey = house.toUpperCase();
-                const d = houseStats[hKey];
-                const bgClass = d.total > 0 ? '' : 'opacity-50 text-muted';
-
-                tbody.innerHTML += `
-                    <tr class="${bgClass}">
-                        <td class="text-start ps-4 fw-bold" style="color: #4a148c;">${house}</td>
-                        <td class="text-success">${d.p}</td>
-                        <td class="text-danger">${d.a}</td>
-                        <td class="text-warning text-dark">${d.l}</td>
-                        <td class="text-info text-dark">${d.t}</td>
-                        <td class="text-secondary fw-bold">${d.total}</td>
-                    </tr>
-                `;
-            });
         }
 
         function buildCell(target, period, map) {

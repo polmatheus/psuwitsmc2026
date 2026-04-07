@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบเช็คชื่อ - Discovery Time</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background-color: #f4f6f9; }
+        
+        /* ธีมสีฟ้าอมเขียว (Teal) สำหรับ Discovery Time */
+        .header-banner { background: linear-gradient(135deg, #00695c, #00acc1); color: white; padding: 30px 0; border-radius: 0 0 25px 25px; margin-bottom: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .filter-card { background: white; border-radius: 15px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 25px; margin-bottom: 30px; }
+        .student-card { background: white; border-radius: 15px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 20px; }
+        
+        /* Custom Radio Buttons */
+        .status-options input[type="radio"] { display: none; }
+        .status-options label { 
+            padding: 8px; border: 1px solid #dee2e6; border-radius: 8px; 
+            cursor: pointer; width: 100%; text-align: center; font-size: 0.9rem; font-weight: 600;
+            transition: all 0.2s;
+        }
+        .status-options input[value="present"]:checked + label { background: #d1e7dd; color: #0f5132; border-color: #a3cfbb; }
+        .status-options input[value="absent"]:checked + label { background: #f8d7da; color: #842029; border-color: #f1aeb5; }
+        .status-options input[value="leave"]:checked + label { background: #fff3cd; color: #664d03; border-color: #ffe69c; }
+        .status-options input[value="late"]:checked + label { background: #cff4fc; color: #055160; border-color: #9eeaf9; }
+
+        .sticky-header { position: sticky; top: 0; background: white; z-index: 100; padding: 10px 0; border-bottom: 1px solid #eee; }
+    </style>
+</head>
+<body>
+
+    <div class="header-banner text-center">
+        <div class="container">
+            <img src="https://img2.pic.in.th/pic/PSUWIT_Circle.png" class="logo-circle mb-2" width="100">
+            <h2 class="fw-bold"><i class="bi bi-compass-fill text-warning"></i> ระบบเช็คชื่อ Discovery Time</h2>
+            <p class="mb-0 opacity-75">จัดการการเข้าเรียนกิจกรรม Discovery Time (เลือก 4 จาก 10 กิจกรรม)</p>
+        </div>
+    </div>
+
+    <div class="container pb-5">
+        
+        <div class="filter-card">
+            <div class="row g-3">
+                <div class="col-md-2">
+                    <label class="form-label fw-bold text-teal" style="color: #00695c;">วันที่</label>
+                    <input type="date" id="checkDate" class="form-control form-control-lg">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold text-teal" style="color: #00695c;">ชื่อกิจกรรม</label>
+                    <select id="activitySelect" class="form-select form-select-lg">
+                        <option value="">-- เลือกกิจกรรม --</option>
+                        <option value="กิจกรรม 1">กิจกรรม 1</option>
+                        <option value="กิจกรรม 2">กิจกรรม 2</option>
+                        <option value="กิจกรรม 3">กิจกรรม 3</option>
+                        <option value="กิจกรรม 4">กิจกรรม 4</option>
+                        <option value="กิจกรรม 5">กิจกรรม 5</option>
+                        <option value="กิจกรรม 6">กิจกรรม 6</option>
+                        <option value="กิจกรรม 7">กิจกรรม 7</option>
+                        <option value="กิจกรรม 8">กิจกรรม 8</option>
+                        <option value="กิจกรรม 9">กิจกรรม 9</option>
+                        <option value="กิจกรรม 10">กิจกรรม 10</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold text-teal" style="color: #00695c;">ครั้งที่</label>
+                    <select id="sessionSelect" class="form-select form-select-lg">
+                        <option value="ครั้งที่ 1">ครั้งที่ 1</option>
+                        <option value="ครั้งที่ 2">ครั้งที่ 2</option>
+                        <option value="ครั้งที่ 3">ครั้งที่ 3</option>
+                        <option value="ครั้งที่ 4">ครั้งที่ 4</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold text-teal" style="color: #00695c;">ครูผู้สอน</label>
+                    <select id="teacherSelect" class="form-select form-select-lg">
+                        <option value="">-- โหลดข้อมูลครู... --</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button onclick="fetchStudentData()" class="btn btn-lg w-100 fw-bold text-white" style="background-color: #00838f;">
+                        <i class="bi bi-search"></i> โหลดรายชื่อ
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="attendanceArea" style="display: none;">
+            <div class="sticky-header d-flex justify-content-between align-items-center mb-3">
+                <h4 class="fw-bold m-0" style="color: #00695c;" id="listTitle">รายชื่อนักเรียน</h4>
+                <button onclick="saveToDatabase()" class="btn btn-lg px-5 fw-bold rounded-pill shadow text-white" style="background-color: #00695c;">
+                    <i class="bi bi-cloud-check"></i> บันทึกข้อมูลทั้งหมด
+                </button>
+            </div>
+
+            <div class="student-card">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr class="text-center">
+                                <th width="15%">รหัสนักเรียน</th>
+                                <th width="30%" class="text-start">ชื่อ-นามสกุล</th>
+                                <th width="15%">กิจกรรมที่เลือก</th>
+                                <th width="40%">สถานะการเข้าเรียน</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentTbody">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="index.html" class="text-secondary text-decoration-none"><i class="bi bi-arrow-left"></i> กลับหน้าเมนูหลัก</a>
+        </div>
+
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://pqkaqsxmbewilzruogdw.supabase.co'; 
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxa2Fxc3htYmV3aWx6cnVvZ2R3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0ODgzMTksImV4cCI6MjA4NDA2NDMxOX0.TFyfNcFXcUUF29Iexmkjf6EaNIXAv8KuOFY_ydAY_z8'; 
+        const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let masterStudents = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            document.getElementById('checkDate').valueAsDate = new Date();
+            await loadTeacherData();
+        });
+
+        // ดึงข้อมูลครูทั้งหมด
+        async function loadTeacherData() {
+            try {
+                const { data, error } = await client.from('teachers').select('fullname').range(0, 9999);
+                if (error) throw error;
+                
+                const uniqueTeachers = [...new Set(data.map(t => t.fullname ? t.fullname.trim() : ''))].filter(t => t !== '');
+                uniqueTeachers.sort((a, b) => a.localeCompare(b, 'th'));
+                
+                const dropDown = document.getElementById('teacherSelect');
+                dropDown.innerHTML = '<option value="">-- เลือกครูผู้สอน --</option>';
+                uniqueTeachers.forEach(t => dropDown.innerHTML += `<option value="${t}">${t}</option>`);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // ดึงรายชื่อนักเรียน
+        async function fetchStudentData() {
+            const date = document.getElementById('checkDate').value;
+            const activity = document.getElementById('activitySelect').value;
+            const session = document.getElementById('sessionSelect').value;
+
+            if (!date || !activity || !session) {
+                Swal.fire('ข้อมูลไม่ครบ', 'กรุณาเลือก วันที่, กิจกรรม และ ครั้งที่', 'warning');
+                return;
+            }
+
+            Swal.fire({ title: 'กำลังโหลด...', didOpen: () => Swal.showLoading() });
+
+            try {
+                // ดึงรายชื่อนักเรียนทั้งหมดมาก่อน
+                const { data: allStudents, error: err1 } = await client
+                    .from('students')
+                    .select('*')
+                    .range(0, 9999);
+
+                if (err1) throw err1;
+
+                const safeActivity = activity.replace(/\s+/g, '');
+                
+                // 🔥 ข้อควรระวัง: แก้ไขชื่อคอลัมน์ 'discovery_activity' ให้ตรงกับในฐานข้อมูลของคุณ
+                // เช่น ถ้าใช้ activity1, activity2 ต้องมาปรับเงื่อนไขตรงนี้นะครับ
+                const students = allStudents
+                    .filter(s => s.discovery_activity && s.discovery_activity.replace(/\s+/g, '') === safeActivity)
+                    .sort((a, b) => a.student_id.localeCompare(b.student_id));
+
+                // ดึงประวัติการเช็คชื่อ
+                const { data: history, error: err2 } = await client
+                    .from('daily_attendance')
+                    .select('student_id, status, recorded_by')
+                    .eq('check_date', date)
+                    .eq('module_type', 'discovery') 
+                    .eq('target_group', activity) // บันทึกชื่อกิจกรรมลง target_group
+                    .eq('period', session) // บันทึก "ครั้งที่ 1,2,3,4" ลง period
+                    .range(0, 9999);
+
+                if (err2) throw err2;
+
+                if (history.length > 0 && history[0].recorded_by) {
+                    document.getElementById('teacherSelect').value = history[0].recorded_by;
+                }
+
+                const historyMap = {};
+                history.forEach(h => historyMap[h.student_id] = h.status);
+
+                masterStudents = students;
+                renderStudentTable(students, historyMap, activity);
+                
+                document.getElementById('attendanceArea').style.display = 'block';
+                document.getElementById('listTitle').innerText = `รายชื่อนักเรียน ${activity} (${session}) - ${students.length} คน`;
+                Swal.close();
+
+            } catch (e) {
+                console.error(e);
+                Swal.fire('Error', 'เกิดข้อผิดพลาดในการดึงข้อมูล', 'error');
+            }
+        }
+
+        function renderStudentTable(students, historyMap, activityName) {
+            const tbody = document.getElementById('studentTbody');
+            tbody.innerHTML = '';
+
+            if (students.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-muted">ไม่พบรายชื่อนักเรียนที่เลือก ${activityName} (โปรดตรวจสอบข้อมูลในฐานข้อมูล)</td></tr>`;
+                return;
+            }
+
+            students.forEach(s => {
+                const currentStatus = historyMap[s.student_id] || 'present';
+                // 🔥 แสดงชื่อกิจกรรมที่ดึงมาจากฐานข้อมูลนักเรียน
+                const studentActivity = s.discovery_activity || activityName; 
+
+                const row = `
+                    <tr>
+                        <td class="text-center font-monospace fw-bold text-secondary">${s.student_id}</td>
+                        <td class="fw-bold">${s.fullname}</td>
+                        <td class="text-center"><span class="badge" style="background-color: #00acc1;">${studentActivity}</span></td>
+                        <td>
+                            <div class="row g-1 status-options">
+                                <div class="col-3">
+                                    <input type="radio" name="st_${s.student_id}" id="p_${s.student_id}" value="present" ${currentStatus==='present'?'checked':''}>
+                                    <label for="p_${s.student_id}">มา</label>
+                                </div>
+                                <div class="col-3">
+                                    <input type="radio" name="st_${s.student_id}" id="a_${s.student_id}" value="absent" ${currentStatus==='absent'?'checked':''}>
+                                    <label for="a_${s.student_id}">ขาด</label>
+                                </div>
+                                <div class="col-3">
+                                    <input type="radio" name="st_${s.student_id}" id="l_${s.student_id}" value="leave" ${currentStatus==='leave'?'checked':''}>
+                                    <label for="l_${s.student_id}">ลา</label>
+                                </div>
+                                <div class="col-3">
+                                    <input type="radio" name="st_${s.student_id}" id="t_${s.student_id}" value="late" ${currentStatus==='late'?'checked':''}>
+                                    <label for="t_${s.student_id}">สาย</label>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        }
+
+        async function saveToDatabase() {
+            const date = document.getElementById('checkDate').value;
+            const activity = document.getElementById('activitySelect').value;
+            const session = document.getElementById('sessionSelect').value;
+            const teacher = document.getElementById('teacherSelect').value;
+
+            if (!teacher) {
+                Swal.fire('ระบุครูผู้สอน', 'กรุณาเลือกชื่อครูผู้สอนก่อนบันทึก', 'info');
+                return;
+            }
+
+            const payload = masterStudents.map(s => ({
+                check_date: date,
+                module_type: 'discovery',
+                student_id: s.student_id,
+                status: document.querySelector(`input[name="st_${s.student_id}"]:checked`).value,
+                target_group: activity, // เก็บชื่อกิจกรรม
+                period: session, // เก็บ ครั้งที่ 1-4
+                recorded_by: teacher 
+            }));
+
+            Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            try {
+                // ล้างข้อมูลเก่า (Overwrite) ป้องกันข้อมูลซ้ำ
+                await client.from('daily_attendance').delete()
+                    .eq('check_date', date)
+                    .eq('module_type', 'discovery')
+                    .eq('target_group', activity)
+                    .eq('period', session);
+
+                const { error } = await client.from('daily_attendance').insert(payload);
+                if (error) throw error;
+
+                Swal.fire({ icon: 'success', title: 'บันทึกเรียบร้อย', timer: 1500, showConfirmButton: false });
+
+            } catch (e) {
+                console.error(e);
+                Swal.fire('Error', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+            }
+        }
+    </script>
+</body>
+</html>

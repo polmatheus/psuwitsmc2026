@@ -113,19 +113,19 @@
             const dateStr = document.getElementById('dashDate').value;
             if(!dateStr) return;
 
-            Swal.fire({ title: 'กำลังดึงข้อมูลทั้งหมด...', text: 'อาจใช้เวลาสักครู่หากข้อมูลมีปริมาณมาก', didOpen: () => Swal.showLoading() });
+            Swal.fire({ title: 'กำลังดึงและเรียงข้อมูล...', text: 'กรุณารอสักครู่ (ดึงข้อมูลทั้งหมดของวัน)', didOpen: () => Swal.showLoading() });
 
             try {
                 let allRecords = [];
-                let fetchStep = 1000;
                 let fetchStart = 0;
+                let fetchStep = 1000;
                 let keepFetching = true;
 
-                // 🔥 ลูปดึงข้อมูลจนกว่าจะหมด + ล็อคการเรียงลำดับแบบ 4 ชั้นป้องกันข้อมูลร่วง 100%
+                // 🔥 ดึงข้อมูลแบบเรียงลำดับเป๊ะๆ (ระบบ -> กลุ่ม -> คาบ -> รหัสเด็ก) เพื่อป้องกันข้อมูลร่วง 100%
                 while (keepFetching) {
                     const { data: records, error } = await client
                         .from('daily_attendance')
-                        .select('target_group, period, status, recorded_by')
+                        .select('module_type, target_group, period, status, recorded_by')
                         .eq('check_date', dateStr)
                         .order('module_type', { ascending: true })
                         .order('target_group', { ascending: true })
@@ -135,20 +135,23 @@
 
                     if (error) throw error;
 
-                    allRecords = allRecords.concat(records);
+                    if (records && records.length > 0) {
+                        allRecords = allRecords.concat(records);
+                        fetchStart += records.length; // ให้แน่ใจว่าการนับขยับตามข้อมูลที่ได้มาจริง
+                    }
 
-                    if (records.length < fetchStep) {
+                    // ถ้าดึงมาได้น้อยกว่า 1000 แสดงว่าหมดแล้ว
+                    if (!records || records.length < fetchStep) {
                         keepFetching = false;
-                    } else {
-                        fetchStart += fetchStep;
                     }
                 }
 
+                // กองรวมสำเร็จแล้ว ค่อยเริ่มทำการสรุปผลเข้าตาราง
                 let attendanceMap = {};
                 
                 allRecords.forEach(row => {
-                    const safeTargetGroup = row.target_group ? row.target_group.replace(/\s+/g, '').toUpperCase() : '';
-                    const safePeriod = row.period ? row.period.replace(/\s+/g, '').toUpperCase() : '';
+                    const safeTargetGroup = row.target_group ? String(row.target_group).replace(/\s+/g, '').toUpperCase() : '';
+                    const safePeriod = row.period ? String(row.period).replace(/\s+/g, '').toUpperCase() : '';
                     
                     const key = `${safeTargetGroup}_${safePeriod}`;
                     
@@ -156,7 +159,7 @@
                         attendanceMap[key] = { present: 0, absent: 0, leave: 0, late: 0, recorded_by: row.recorded_by };
                     }
                     
-                    const rawStatus = row.status ? row.status.toLowerCase().trim() : '';
+                    const rawStatus = row.status ? String(row.status).toLowerCase().trim() : '';
                     if(attendanceMap[key][rawStatus] !== undefined) {
                         attendanceMap[key][rawStatus]++;
                     }

@@ -16,17 +16,14 @@
         .header-banner { background: linear-gradient(135deg, #1e293b, #334155); color: white; padding: 25px 0; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }
         .card-custom { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: none; margin-bottom: 30px; }
         
-        /* สไตล์ตาราง Dashboard */
         .table-dash th { background-color: #1e293b; color: white; text-align: center; vertical-align: middle; padding: 12px; border: 1px solid #334155;}
         .table-dash td { vertical-align: middle; padding: 8px; border: 1px solid #e2e8f0; }
         .col-title { background-color: #f8fafc; font-weight: 700; width: 12%; text-align: center; border-right: 2px solid #cbd5e1 !important; }
 
-        /* กล่องสถานะ เช็คแล้ว / ยังไม่เช็ค */
         .status-box { padding: 10px 5px; border-radius: 8px; text-align: center; display: flex; flex-direction: column; justify-content: center; min-height: 80px; }
         .status-box.checked { background-color: #e8f5e9; color: #1b5e20; border: 1px solid #c8e6c9; }
         .status-box.pending { background-color: #ffebee; color: #b71c1c; border: 1px solid #ffcdd2; }
         
-        /* ตัวหนังสือสถิติ (P/A/L/T) */
         .stats-text { margin-top: 5px; font-size: 0.8rem; font-weight: bold; background: white; padding: 3px 0; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);}
         .stat-p { color: #2e7d32; margin: 0 3px;}
         .stat-a { color: #c62828; margin: 0 3px;}
@@ -68,8 +65,7 @@
                             <th>Homeroom บ่าย</th>
                         </tr>
                     </thead>
-                    <tbody id="houseTableBody">
-                        </tbody>
+                    <tbody id="houseTableBody"></tbody>
                 </table>
             </div>
         </div>
@@ -87,8 +83,7 @@
                             <th>คาบ 4 (14:30 - 15:50)</th>
                         </tr>
                     </thead>
-                    <tbody id="secTableBody">
-                        </tbody>
+                    <tbody id="secTableBody"></tbody>
                 </table>
             </div>
         </div>
@@ -100,7 +95,6 @@
     </div>
 
     <script>
-        // --- Supabase Config ---
         const SUPABASE_URL = 'https://pqkaqsxmbewilzruogdw.supabase.co'; 
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxa2Fxc3htYmV3aWx6cnVvZ2R3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0ODgzMTksImV4cCI6MjA4NDA2NDMxOX0.TFyfNcFXcUUF29Iexmkjf6EaNIXAv8KuOFY_ydAY_z8'; 
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -110,7 +104,6 @@
             fetchDashboardData();
         });
 
-        // รายชื่อเป้าหมาย
         const houseList = ['บ้าน1', 'บ้าน2', 'บ้าน3', 'บ้าน4', 'บ้าน5', 'บ้าน6', 'บ้าน7', 'บ้าน8', 'บ้าน9', 'บ้าน10'];
         const secList = ['SEC1', 'SEC2', 'SEC3', 'SEC4', 'SEC5', 'SEC6', 'SEC7', 'SEC8', 'SEC9', 'SEC10'];
         const housePeriods = ['เช้า', 'คาบ 1', 'คาบ 2', 'คาบ 3', 'คาบ 4', 'บ่าย'];
@@ -120,22 +113,38 @@
             const dateStr = document.getElementById('dashDate').value;
             if(!dateStr) return;
 
-            Swal.fire({ title: 'กำลังโหลดข้อมูลสรุป...', didOpen: () => Swal.showLoading() });
+            Swal.fire({ title: 'กำลังดึงข้อมูลทั้งหมด...', text: 'อาจใช้เวลาสักครู่หากข้อมูลมีปริมาณมาก', didOpen: () => Swal.showLoading() });
 
             try {
-                // ดึงข้อมูลทั้งหมดในวันที่เลือก
-                const { data: records, error } = await client
-                    .from('daily_attendance')
-                    .select('target_group, period, status, recorded_by')
-                    .eq('check_date', dateStr)
-                    .range(0, 9999);
+                let allRecords = [];
+                let fetchStep = 1000;
+                let fetchStart = 0;
+                let keepFetching = true;
 
-                if (error) throw error;
+                // 🔥 ลูปดึงข้อมูลจนกว่าจะหมด เพื่อแก้ปัญหาข้อมูลเกิน 1,000 แถวต่อวัน
+                while (keepFetching) {
+                    const { data: records, error } = await client
+                        .from('daily_attendance')
+                        .select('target_group, period, status, recorded_by')
+                        .eq('check_date', dateStr)
+                        .range(fetchStart, fetchStart + fetchStep - 1);
+
+                    if (error) throw error;
+
+                    allRecords = allRecords.concat(records);
+
+                    // ถ้ารอบนี้ดึงมาได้น้อยกว่า 1,000 แสดงว่าข้อมูลหมดแล้ว ให้หยุดลูป
+                    if (records.length < fetchStep) {
+                        keepFetching = false;
+                    } else {
+                        // ถ้ายังได้ 1000 เต็ม ให้เลื่อน start ไปอีก 1000 เพื่อดึงรอบถัดไป
+                        fetchStart += fetchStep;
+                    }
+                }
 
                 let attendanceMap = {};
                 
-                records.forEach(row => {
-                    // 🔥 หัวใจสำคัญ: ลบเว้นวรรค (Spacebar) ออกทั้งหมดก่อนจัดกลุ่ม เพื่อแก้ปัญหาข้อมูลในฐานข้อมูลไม่ตรง
+                allRecords.forEach(row => {
                     const safeTargetGroup = row.target_group ? row.target_group.replace(/\s+/g, '') : '';
                     const safePeriod = row.period ? row.period.replace(/\s+/g, '') : '';
                     
@@ -145,7 +154,6 @@
                         attendanceMap[key] = { present: 0, absent: 0, leave: 0, late: 0, recorded_by: row.recorded_by };
                     }
                     
-                    // แปลงสถานะให้เป็นตัวพิมพ์เล็ก ป้องกันปัญหาตัวพิมพ์ใหญ่-เล็กในฐานข้อมูล
                     const rawStatus = row.status ? row.status.toLowerCase().trim() : '';
                     if(attendanceMap[key][rawStatus] !== undefined) {
                         attendanceMap[key][rawStatus]++;
@@ -155,7 +163,7 @@
                 renderHouseTable(attendanceMap);
                 renderSecTable(attendanceMap);
                 
-                if (records.length === 0) {
+                if (allRecords.length === 0) {
                     Swal.fire({ icon: 'info', title: 'ไม่พบข้อมูล', text: `ยังไม่มีการบันทึกข้อมูลในวันที่ ${dateStr}`, timer: 2000, showConfirmButton: false });
                 } else {
                     Swal.close();
@@ -167,9 +175,7 @@
             }
         }
 
-        // ฟังก์ชันสร้าง UI กล่องสถานะ
         function buildCell(target, period, map) {
-            // 🔥 ฝั่งตัวค้นหาก็ต้องลบเว้นวรรคออกเหมือนกัน เพื่อให้ Key ชนกันได้พอดีเป๊ะ
             const safeTarget = target.replace(/\s+/g, '');
             const safePeriod = period.replace(/\s+/g, '');
             const key = `${safeTarget}_${safePeriod}`;

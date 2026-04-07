@@ -16,7 +16,7 @@
         .header-banner { background: linear-gradient(135deg, #1e293b, #334155); color: white; padding: 25px 0; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }
         .card-custom { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: none; margin-bottom: 30px; }
         
-        /* สไตล์ตาราง Dashboard */
+        /* สไตล์ตารางตารางกะเวลา Dashboard */
         .table-dash th { background-color: #1e293b; color: white; text-align: center; vertical-align: middle; padding: 12px; border: 1px solid #334155;}
         .table-dash td { vertical-align: middle; padding: 8px; border: 1px solid #e2e8f0; }
         .col-title { background-color: #f8fafc; font-weight: 700; width: 12%; text-align: center; border-right: 2px solid #cbd5e1 !important; }
@@ -32,7 +32,7 @@
         .stat-t { color: #0277bd; margin: 0 3px;}
         .teacher-name { font-size: 0.7rem; color: #64748b; margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; margin-left: auto; margin-right: auto;}
 
-        /* กล่องสถิติขนาดย่อ สำหรับ Dashboard */
+        /* กล่องสถิติและตารางสรุป */
         .summary-box-sm { border-radius: 12px; padding: 15px 10px; text-align: center; color: white; box-shadow: 0 4px 8px rgba(0,0,0,0.1); transition: transform 0.2s;}
         .summary-box-sm:hover { transform: translateY(-3px); }
         .bg-p { background: linear-gradient(135deg, #2e7d32, #4caf50); }
@@ -42,12 +42,15 @@
         .bg-total { background: linear-gradient(135deg, #37474f, #607d8b); }
         .summary-val-sm { font-size: 2rem; font-weight: 700; line-height: 1; margin: 5px 0; }
         .summary-label-sm { font-size: 0.9rem; font-weight: 600; opacity: 0.9; }
+
+        .table-sum th { background-color: #f3e5f5; color: #4a148c; text-align: center; border-bottom: 2px solid #ce93d8;}
+        .table-sum td { text-align: center; vertical-align: middle; font-weight: 600; font-size: 1.1rem; }
     </style>
 </head>
 <body>
 
     <div class="header-banner text-center">
-        <img src="https://img2.pic.in.th/pic/PSUWIT_Circle.png" class="logo-circle" width="120">
+        <img src="https://img2.pic.in.th/pic/PSUWIT_Circle.png" class="logo-circle" width="80">
         <div class="container d-flex align-items-center justify-content-center gap-3">
             
             <h2 class="fw-bold m-0"><i class="bi bi-bar-chart-fill text-warning"></i> Dashboard สรุปการเช็คชื่อ</h2>
@@ -64,46 +67,62 @@
             </div>
         </div>
 
-        <div class="row g-3 mb-4" id="summarySection" style="display: none;">
-            <div class="col-md col-6">
-                <div class="summary-box-sm bg-total">
-                    <div class="summary-label-sm">ยอดบันทึกทั้งหมด</div>
-                    <div class="summary-val-sm" id="dash-tot-all">0</div>
-                    <div class="small opacity-75" style="font-size: 0.75rem;">รายการ</div>
+        <div class="card-custom" id="summarySection" style="display: none; border-top: 5px solid #9c27b0;">
+            <h4 class="fw-bold mb-4" style="color: #4a148c;"><i class="bi bi-pie-chart-fill"></i> สรุปสถิติรายวัน (เฉพาะกลุ่มบ้าน)</h4>
+            
+            <div class="row g-3 mb-4">
+                <div class="col-md col-6">
+                    <div class="summary-box-sm bg-total">
+                        <div class="summary-label-sm">ยอดบันทึก (บ้าน)</div>
+                        <div class="summary-val-sm" id="dash-tot-all">0</div>
+                    </div>
+                </div>
+                <div class="col-md col-6">
+                    <div class="summary-box-sm bg-p">
+                        <div class="summary-label-sm">มา (P)</div>
+                        <div class="summary-val-sm" id="dash-tot-p">0</div>
+                    </div>
+                </div>
+                <div class="col-md col-4">
+                    <div class="summary-box-sm bg-a">
+                        <div class="summary-label-sm">ขาด (A)</div>
+                        <div class="summary-val-sm" id="dash-tot-a">0</div>
+                    </div>
+                </div>
+                <div class="col-md col-4">
+                    <div class="summary-box-sm bg-l">
+                        <div class="summary-label-sm">ลา (L)</div>
+                        <div class="summary-val-sm" id="dash-tot-l">0</div>
+                    </div>
+                </div>
+                <div class="col-md col-4">
+                    <div class="summary-box-sm bg-t">
+                        <div class="summary-label-sm">สาย (T)</div>
+                        <div class="summary-val-sm" id="dash-tot-t">0</div>
+                    </div>
                 </div>
             </div>
-            <div class="col-md col-6">
-                <div class="summary-box-sm bg-p">
-                    <div class="summary-label-sm">มาเรียน (Present)</div>
-                    <div class="summary-val-sm" id="dash-tot-p">0</div>
-                    <div class="small opacity-75" style="font-size: 0.75rem;">รายการ</div>
-                </div>
-            </div>
-            <div class="col-md col-4">
-                <div class="summary-box-sm bg-a">
-                    <div class="summary-label-sm">ขาด (Absent)</div>
-                    <div class="summary-val-sm" id="dash-tot-a">0</div>
-                    <div class="small opacity-75" style="font-size: 0.75rem;">รายการ</div>
-                </div>
-            </div>
-            <div class="col-md col-4">
-                <div class="summary-box-sm bg-l">
-                    <div class="summary-label-sm">ลา (Leave)</div>
-                    <div class="summary-val-sm" id="dash-tot-l">0</div>
-                    <div class="small opacity-75" style="font-size: 0.75rem;">รายการ</div>
-                </div>
-            </div>
-            <div class="col-md col-4">
-                <div class="summary-box-sm bg-t">
-                    <div class="summary-label-sm">สาย (Late)</div>
-                    <div class="summary-val-sm" id="dash-tot-t">0</div>
-                    <div class="small opacity-75" style="font-size: 0.75rem;">รายการ</div>
-                </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered w-100 table-sum">
+                    <thead>
+                        <tr>
+                            <th class="text-start ps-4">ชื่อกลุ่ม / บ้าน</th>
+                            <th class="text-success">มา (P)</th>
+                            <th class="text-danger">ขาด (A)</th>
+                            <th class="text-warning text-dark">ลา (L)</th>
+                            <th class="text-info text-dark">สาย (T)</th>
+                            <th class="text-secondary">รวม</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dailySummaryBody">
+                        </tbody>
+                </table>
             </div>
         </div>
 
         <div class="card-custom">
-            <h4 class="fw-bold mb-3 text-success"><i class="bi bi-house-heart-fill"></i> สรุปการเช็คชื่อตามบ้าน (Homeroom & SMART wiTH care)</h4>
+            <h4 class="fw-bold mb-3 text-success"><i class="bi bi-house-heart-fill"></i> สถานะการเช็คชื่อตามบ้าน (Homeroom & SMART wiTH care)</h4>
             <div class="table-responsive">
                 <table class="table table-dash w-100">
                     <thead>
@@ -123,7 +142,7 @@
         </div>
 
         <div class="card-custom mt-4">
-            <h4 class="fw-bold mb-3 text-primary"><i class="bi bi-journal-bookmark-fill"></i> สรุปการเช็คชื่อรายวิชา (ตาม SEC)</h4>
+            <h4 class="fw-bold mb-3 text-primary"><i class="bi bi-journal-bookmark-fill"></i> สถานะการเช็คชื่อรายวิชา (ตาม SEC)</h4>
             <div class="table-responsive">
                 <table class="table table-dash w-100">
                     <thead>
@@ -165,92 +184,119 @@
             const dateStr = document.getElementById('dashDate').value;
             if(!dateStr) return;
 
-            Swal.fire({ title: 'กำลังดึงข้อมูลทั้งหมด...', text: 'กรุณารอสักครู่...', didOpen: () => Swal.showLoading() });
+            Swal.fire({ title: 'กำลังประมวลผลข้อมูล...', text: 'กรุณารอสักครู่ (ดึงข้อมูลทั้งหมดของวัน)', didOpen: () => Swal.showLoading() });
 
             try {
                 let allRecords = [];
-                
-                for (let i = 0; i < 20; i++) {
+                let fetchStart = 0;
+                let fetchStep = 1000;
+                let keepFetching = true;
+
+                // ดึงข้อมูลทั้งหมดด้วย Pagination .order('id') เพื่อไม่ให้ข้อมูลหาย
+                while (keepFetching) {
                     const { data: records, error } = await client
                         .from('daily_attendance')
-                        .select('*') 
+                        .select('target_group, period, status, recorded_by')
                         .eq('check_date', dateStr)
                         .order('id', { ascending: true }) 
-                        .range(i * 1000, (i + 1) * 1000 - 1);
+                        .range(fetchStart, fetchStart + fetchStep - 1);
 
                     if (error) throw error;
 
                     if (records && records.length > 0) {
                         allRecords.push(...records);
+                        fetchStart += records.length; 
                     }
 
                     if (!records || records.length < 1000) {
-                        break; 
+                        keepFetching = false;
                     }
                 }
 
+                // 1. จัดเตรียมตัวแปรสำหรับตารางกะเวลา (เขียว/แดง)
                 let attendanceMap = {};
-                // ตัวแปรสำหรับนับสถิติรวมของวันนี้
+                
+                // 2. จัดเตรียมตัวแปรสำหรับสรุปสถิติ (เฉพาะบ้าน)
                 let overall = { p: 0, a: 0, l: 0, t: 0, total: 0 };
+                let houseStats = {};
+                houseList.forEach(h => houseStats[h.toUpperCase()] = { p: 0, a: 0, l: 0, t: 0, total: 0 });
                 
                 allRecords.forEach(row => {
                     const safeTargetGroup = row.target_group ? String(row.target_group).replace(/\s+/g, '').toUpperCase() : '';
                     const safePeriod = row.period ? String(row.period).replace(/\s+/g, '').toUpperCase() : '';
+                    const rawStatus = row.status ? String(row.status).toLowerCase().trim() : '';
                     
+                    // -- บันทึกข้อมูลลงตารางกะเวลา --
                     const key = `${safeTargetGroup}_${safePeriod}`;
-                    
                     if (!attendanceMap[key]) {
                         attendanceMap[key] = { present: 0, absent: 0, leave: 0, late: 0, recorded_by: row.recorded_by };
                     }
-                    
-                    const rawStatus = row.status ? String(row.status).toLowerCase().trim() : '';
-                    
-                    // นับเข้าตารางรายคาบ
                     if(attendanceMap[key][rawStatus] !== undefined) {
                         attendanceMap[key][rawStatus]++;
                     }
 
-                    // นับเข้าสถิติรวม
-                    if (rawStatus === 'present') overall.p++;
-                    else if (rawStatus === 'absent') overall.a++;
-                    else if (rawStatus === 'leave') overall.l++;
-                    else if (rawStatus === 'late') overall.t++;
-                    
-                    if (['present', 'absent', 'leave', 'late'].includes(rawStatus)) {
-                        overall.total++;
+                    // -- บันทึกข้อมูลสถิติ (เอาเฉพาะข้อมูลของ "บ้าน") --
+                    if (safeTargetGroup.startsWith('บ้าน') && houseStats[safeTargetGroup]) {
+                        if (rawStatus === 'present') { overall.p++; houseStats[safeTargetGroup].p++; }
+                        else if (rawStatus === 'absent') { overall.a++; houseStats[safeTargetGroup].a++; }
+                        else if (rawStatus === 'leave') { overall.l++; houseStats[safeTargetGroup].l++; }
+                        else if (rawStatus === 'late') { overall.t++; houseStats[safeTargetGroup].t++; }
+                        
+                        if (['present', 'absent', 'leave', 'late'].includes(rawStatus)) {
+                            overall.total++;
+                            houseStats[safeTargetGroup].total++;
+                        }
                     }
                 });
 
-                // อัปเดตตารางด้านล่าง
+                // วาด UI
+                renderSummaryTable(overall, houseStats);
                 renderHouseTable(attendanceMap);
                 renderSecTable(attendanceMap);
                 
-                // อัปเดตกล่องสถิติด้านบน
-                document.getElementById('dash-tot-all').innerText = overall.total.toLocaleString();
-                document.getElementById('dash-tot-p').innerText = overall.p.toLocaleString();
-                document.getElementById('dash-tot-a').innerText = overall.a.toLocaleString();
-                document.getElementById('dash-tot-l').innerText = overall.l.toLocaleString();
-                document.getElementById('dash-tot-t').innerText = overall.t.toLocaleString();
-                
-                // แสดงแถบสถิติ
-                document.getElementById('summarySection').style.display = 'flex';
+                document.getElementById('summarySection').style.display = 'block';
 
                 if (allRecords.length === 0) {
                     Swal.fire({ icon: 'info', title: 'ไม่พบข้อมูล', text: `ยังไม่มีการบันทึกข้อมูลในวันที่ ${dateStr}`, timer: 2000, showConfirmButton: false });
                 } else {
-                    Swal.fire({ 
-                        icon: 'success', 
-                        title: 'โหลดสำเร็จ!', 
-                        text: `ประมวลผลข้อมูลทั้งหมด ${allRecords.length.toLocaleString()} รายการ`, 
-                        timer: 2000, 
-                        showConfirmButton: false 
-                    });
+                    Swal.close();
                 }
 
             } catch (err) {
                 console.error(err);
                 Swal.fire('Error', 'ไม่สามารถโหลดข้อมูล Dashboard ได้', 'error');
             }
+        }
+
+        // ฟังก์ชันวาดตารางสถิติสรุปรายบ้าน
+        function renderSummaryTable(overall, houseStats) {
+            // อัปเดตกล่องตัวเลข
+            document.getElementById('dash-tot-all').innerText = overall.total.toLocaleString();
+            document.getElementById('dash-tot-p').innerText = overall.p.toLocaleString();
+            document.getElementById('dash-tot-a').innerText = overall.a.toLocaleString();
+            document.getElementById('dash-tot-l').innerText = overall.l.toLocaleString();
+            document.getElementById('dash-tot-t').innerText = overall.t.toLocaleString();
+
+            // อัปเดตตารางรายบ้าน
+            const tbody = document.getElementById('dailySummaryBody');
+            tbody.innerHTML = '';
+
+            houseList.forEach(house => {
+                const hKey = house.toUpperCase();
+                const d = houseStats[hKey];
+                const bgClass = d.total > 0 ? '' : 'opacity-50 text-muted';
+
+                tbody.innerHTML += `
+                    <tr class="${bgClass}">
+                        <td class="text-start ps-4 fw-bold" style="color: #4a148c;">${house}</td>
+                        <td class="text-success">${d.p}</td>
+                        <td class="text-danger">${d.a}</td>
+                        <td class="text-warning text-dark">${d.l}</td>
+                        <td class="text-info text-dark">${d.t}</td>
+                        <td class="text-secondary fw-bold">${d.total}</td>
+                    </tr>
+                `;
+            });
         }
 
         function buildCell(target, period, map) {

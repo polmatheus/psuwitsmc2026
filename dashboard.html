@@ -121,23 +121,22 @@
                 let fetchStart = 0;
                 let keepFetching = true;
 
-                // 🔥 ลูปดึงข้อมูลจนกว่าจะหมด เพื่อแก้ปัญหาข้อมูลเกิน 1,000 แถวต่อวัน
+                // 🔥 ลูปดึงข้อมูลจนกว่าจะหมด + ล็อคการเรียงลำดับ .order() เพื่อป้องกันข้อมูลตกหล่น
                 while (keepFetching) {
                     const { data: records, error } = await client
                         .from('daily_attendance')
                         .select('target_group, period, status, recorded_by')
                         .eq('check_date', dateStr)
+                        .order('student_id', { ascending: true }) // 🌟 จำเป็นมากสำหรับข้อมูลที่เกิน 1000 แถว!
                         .range(fetchStart, fetchStart + fetchStep - 1);
 
                     if (error) throw error;
 
                     allRecords = allRecords.concat(records);
 
-                    // ถ้ารอบนี้ดึงมาได้น้อยกว่า 1,000 แสดงว่าข้อมูลหมดแล้ว ให้หยุดลูป
                     if (records.length < fetchStep) {
                         keepFetching = false;
                     } else {
-                        // ถ้ายังได้ 1000 เต็ม ให้เลื่อน start ไปอีก 1000 เพื่อดึงรอบถัดไป
                         fetchStart += fetchStep;
                     }
                 }
@@ -145,8 +144,9 @@
                 let attendanceMap = {};
                 
                 allRecords.forEach(row => {
-                    const safeTargetGroup = row.target_group ? row.target_group.replace(/\s+/g, '') : '';
-                    const safePeriod = row.period ? row.period.replace(/\s+/g, '') : '';
+                    // 🔥 ลบเว้นวรรค และแปลงเป็นพิมพ์ใหญ่ (SEC10) ป้องกันการพิมพ์สลับเคส
+                    const safeTargetGroup = row.target_group ? row.target_group.replace(/\s+/g, '').toUpperCase() : '';
+                    const safePeriod = row.period ? row.period.replace(/\s+/g, '').toUpperCase() : '';
                     
                     const key = `${safeTargetGroup}_${safePeriod}`;
                     
@@ -176,8 +176,9 @@
         }
 
         function buildCell(target, period, map) {
-            const safeTarget = target.replace(/\s+/g, '');
-            const safePeriod = period.replace(/\s+/g, '');
+            // ต้องแปลงตัวค้นหาให้เป็นพิมพ์ใหญ่และไร้เว้นวรรคให้ตรงกับตัวข้างบน
+            const safeTarget = target.replace(/\s+/g, '').toUpperCase();
+            const safePeriod = period.replace(/\s+/g, '').toUpperCase();
             const key = `${safeTarget}_${safePeriod}`;
             const data = map[key];
 

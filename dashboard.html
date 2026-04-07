@@ -121,13 +121,16 @@
                 let fetchStart = 0;
                 let keepFetching = true;
 
-                // 🔥 ลูปดึงข้อมูลจนกว่าจะหมด + ล็อคการเรียงลำดับ .order() เพื่อป้องกันข้อมูลตกหล่น
+                // 🔥 ลูปดึงข้อมูลจนกว่าจะหมด + ล็อคการเรียงลำดับแบบ 4 ชั้นป้องกันข้อมูลร่วง 100%
                 while (keepFetching) {
                     const { data: records, error } = await client
                         .from('daily_attendance')
                         .select('target_group, period, status, recorded_by')
                         .eq('check_date', dateStr)
-                        .order('student_id', { ascending: true }) // 🌟 จำเป็นมากสำหรับข้อมูลที่เกิน 1000 แถว!
+                        .order('module_type', { ascending: true })
+                        .order('target_group', { ascending: true })
+                        .order('period', { ascending: true })
+                        .order('student_id', { ascending: true })
                         .range(fetchStart, fetchStart + fetchStep - 1);
 
                     if (error) throw error;
@@ -144,7 +147,6 @@
                 let attendanceMap = {};
                 
                 allRecords.forEach(row => {
-                    // 🔥 ลบเว้นวรรค และแปลงเป็นพิมพ์ใหญ่ (SEC10) ป้องกันการพิมพ์สลับเคส
                     const safeTargetGroup = row.target_group ? row.target_group.replace(/\s+/g, '').toUpperCase() : '';
                     const safePeriod = row.period ? row.period.replace(/\s+/g, '').toUpperCase() : '';
                     
@@ -176,7 +178,6 @@
         }
 
         function buildCell(target, period, map) {
-            // ต้องแปลงตัวค้นหาให้เป็นพิมพ์ใหญ่และไร้เว้นวรรคให้ตรงกับตัวข้างบน
             const safeTarget = target.replace(/\s+/g, '').toUpperCase();
             const safePeriod = period.replace(/\s+/g, '').toUpperCase();
             const key = `${safeTarget}_${safePeriod}`;

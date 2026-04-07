@@ -110,7 +110,7 @@
             fetchDashboardData();
         });
 
-        // รายชื่อบ้าน และ SEC ทั้งหมด (ไม่มีเว้นวรรค)
+        // รายชื่อเป้าหมาย
         const houseList = ['บ้าน1', 'บ้าน2', 'บ้าน3', 'บ้าน4', 'บ้าน5', 'บ้าน6', 'บ้าน7', 'บ้าน8', 'บ้าน9', 'บ้าน10'];
         const secList = ['SEC1', 'SEC2', 'SEC3', 'SEC4', 'SEC5', 'SEC6', 'SEC7', 'SEC8', 'SEC9', 'SEC10'];
         const housePeriods = ['เช้า', 'คาบ 1', 'คาบ 2', 'คาบ 3', 'คาบ 4', 'บ่าย'];
@@ -123,7 +123,7 @@
             Swal.fire({ title: 'กำลังโหลดข้อมูลสรุป...', didOpen: () => Swal.showLoading() });
 
             try {
-                // ดึงข้อมูลการเช็คชื่อทั้งหมดของวันนี้
+                // ดึงข้อมูลทั้งหมดในวันที่เลือก
                 const { data: records, error } = await client
                     .from('daily_attendance')
                     .select('target_group, period, status, recorded_by')
@@ -132,26 +132,35 @@
 
                 if (error) throw error;
 
-                // จัดกลุ่มข้อมูล: Map["กลุ่ม_คาบ"] = { present: 0, absent: 0, leave: 0, late: 0, teacher: '' }
                 let attendanceMap = {};
                 
                 records.forEach(row => {
-                    // 🔥 หัวใจสำคัญ: ลบเว้นวรรคทั้งหมดออกจาก target_group ป้องกันการหาไม่เจอ!
-                    // เช่น "บ้าน 1", "บ้าน  1" หรือ "SEC 1" จะถูกแปลงเป็น "บ้าน1" และ "SEC1" ทั้งหมด
+                    // 🔥 หัวใจสำคัญ: ลบเว้นวรรค (Spacebar) ออกทั้งหมดก่อนจัดกลุ่ม เพื่อแก้ปัญหาข้อมูลในฐานข้อมูลไม่ตรง
                     const safeTargetGroup = row.target_group ? row.target_group.replace(/\s+/g, '') : '';
+                    const safePeriod = row.period ? row.period.replace(/\s+/g, '') : '';
                     
-                    const key = `${safeTargetGroup}_${row.period}`;
+                    const key = `${safeTargetGroup}_${safePeriod}`;
                     
                     if (!attendanceMap[key]) {
                         attendanceMap[key] = { present: 0, absent: 0, leave: 0, late: 0, recorded_by: row.recorded_by };
                     }
-                    attendanceMap[key][row.status]++;
+                    
+                    // แปลงสถานะให้เป็นตัวพิมพ์เล็ก ป้องกันปัญหาตัวพิมพ์ใหญ่-เล็กในฐานข้อมูล
+                    const rawStatus = row.status ? row.status.toLowerCase().trim() : '';
+                    if(attendanceMap[key][rawStatus] !== undefined) {
+                        attendanceMap[key][rawStatus]++;
+                    }
                 });
 
                 renderHouseTable(attendanceMap);
                 renderSecTable(attendanceMap);
                 
-                Swal.close();
+                if (records.length === 0) {
+                    Swal.fire({ icon: 'info', title: 'ไม่พบข้อมูล', text: `ยังไม่มีการบันทึกข้อมูลในวันที่ ${dateStr}`, timer: 2000, showConfirmButton: false });
+                } else {
+                    Swal.close();
+                }
+
             } catch (err) {
                 console.error(err);
                 Swal.fire('Error', 'ไม่สามารถโหลดข้อมูล Dashboard ได้', 'error');
@@ -160,12 +169,13 @@
 
         // ฟังก์ชันสร้าง UI กล่องสถานะ
         function buildCell(target, period, map) {
-            // target ถูกส่งมาเป็น "บ้าน1", "SEC1" (ไม่มีเว้นวรรคอยู่แล้ว)
-            const key = `${target}_${period}`;
+            // 🔥 ฝั่งตัวค้นหาก็ต้องลบเว้นวรรคออกเหมือนกัน เพื่อให้ Key ชนกันได้พอดีเป๊ะ
+            const safeTarget = target.replace(/\s+/g, '');
+            const safePeriod = period.replace(/\s+/g, '');
+            const key = `${safeTarget}_${safePeriod}`;
             const data = map[key];
 
             if (data) {
-                // กรณี: เช็คชื่อแล้ว (สีเขียว)
                 return `
                     <div class="status-box checked shadow-sm">
                         <div class="fw-bold"><i class="bi bi-check-circle-fill"></i> เช็คแล้ว</div>
@@ -179,7 +189,6 @@
                     </div>
                 `;
             } else {
-                // กรณี: ยังไม่เช็คชื่อ (สีแดง)
                 return `
                     <div class="status-box pending shadow-sm">
                         <div class="fw-bold"><i class="bi bi-exclamation-circle-fill"></i> ยังไม่เช็ค</div>
@@ -189,7 +198,6 @@
             }
         }
 
-        // วาดตารางฝั่ง "บ้าน"
         function renderHouseTable(map) {
             const tbody = document.getElementById('houseTableBody');
             tbody.innerHTML = '';
@@ -204,7 +212,6 @@
             });
         }
 
-        // วาดตารางฝั่ง "SEC"
         function renderSecTable(map) {
             const tbody = document.getElementById('secTableBody');
             tbody.innerHTML = '';

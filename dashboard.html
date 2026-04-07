@@ -38,9 +38,7 @@
 <body>
 
     <div class="header-banner text-center">
-        <img src="https://img2.pic.in.th/pic/PSUWIT_Circle.png" class="logo-circle" width = "120">
         <div class="container d-flex align-items-center justify-content-center gap-3">
-            
             <h2 class="fw-bold m-0"><i class="bi bi-bar-chart-fill text-warning"></i> Dashboard สรุปการเช็คชื่อ</h2>
         </div>
     </div>
@@ -62,12 +60,12 @@
                     <thead>
                         <tr>
                             <th class="col-title bg-success text-white border-success">กลุ่ม / บ้าน</th>
-                            <th>Homeroom เช้า(08:00 - 08:30)</th>
-                            <th>คาบ 1 (08:30 - 10:00)</th>
-                            <th>คาบ 2 (10:10 - 11:40)</th>
-                            <th>คาบ 3 (12:40 - 14:10)</th>
-                            <th>คาบ 4 (14:20 - 15:50)</th>
-                            <th>Homeroom บ่าย(15:50 - 16:00)</th>
+                            <th>Homeroom เช้า</th>
+                            <th>คาบ 1 (09:00 - 10:20)</th>
+                            <th>คาบ 2 (10:30 - 11:50)</th>
+                            <th>คาบ 3 (13:00 - 14:20)</th>
+                            <th>คาบ 4 (14:30 - 15:50)</th>
+                            <th>Homeroom บ่าย</th>
                         </tr>
                     </thead>
                     <tbody id="houseTableBody">
@@ -83,10 +81,10 @@
                     <thead>
                         <tr>
                             <th class="col-title bg-primary text-white border-primary">กลุ่มเรียน (SEC)</th>
-                           <th>คาบ 1 (08:30 - 10:00)</th>
-                            <th>คาบ 2 (10:10 - 11:40)</th>
-                            <th>คาบ 3 (12:40 - 14:10)</th>
-                            <th>คาบ 4 (14:20 - 15:50)</th>
+                            <th>คาบ 1 (09:00 - 10:20)</th>
+                            <th>คาบ 2 (10:30 - 11:50)</th>
+                            <th>คาบ 3 (13:00 - 14:20)</th>
+                            <th>คาบ 4 (14:30 - 15:50)</th>
                         </tr>
                     </thead>
                     <tbody id="secTableBody">
@@ -112,7 +110,7 @@
             fetchDashboardData();
         });
 
-        // รายชื่อบ้าน และ SEC ทั้งหมด
+        // รายชื่อบ้าน และ SEC ทั้งหมด (ไม่มีเว้นวรรค)
         const houseList = ['บ้าน1', 'บ้าน2', 'บ้าน3', 'บ้าน4', 'บ้าน5', 'บ้าน6', 'บ้าน7', 'บ้าน8', 'บ้าน9', 'บ้าน10'];
         const secList = ['SEC1', 'SEC2', 'SEC3', 'SEC4', 'SEC5', 'SEC6', 'SEC7', 'SEC8', 'SEC9', 'SEC10'];
         const housePeriods = ['เช้า', 'คาบ 1', 'คาบ 2', 'คาบ 3', 'คาบ 4', 'บ่าย'];
@@ -138,7 +136,12 @@
                 let attendanceMap = {};
                 
                 records.forEach(row => {
-                    const key = `${row.target_group}_${row.period}`;
+                    // 🔥 หัวใจสำคัญ: ลบเว้นวรรคทั้งหมดออกจาก target_group ป้องกันการหาไม่เจอ!
+                    // เช่น "บ้าน 1", "บ้าน  1" หรือ "SEC 1" จะถูกแปลงเป็น "บ้าน1" และ "SEC1" ทั้งหมด
+                    const safeTargetGroup = row.target_group ? row.target_group.replace(/\s+/g, '') : '';
+                    
+                    const key = `${safeTargetGroup}_${row.period}`;
+                    
                     if (!attendanceMap[key]) {
                         attendanceMap[key] = { present: 0, absent: 0, leave: 0, late: 0, recorded_by: row.recorded_by };
                     }
@@ -157,6 +160,7 @@
 
         // ฟังก์ชันสร้าง UI กล่องสถานะ
         function buildCell(target, period, map) {
+            // target ถูกส่งมาเป็น "บ้าน1", "SEC1" (ไม่มีเว้นวรรคอยู่แล้ว)
             const key = `${target}_${period}`;
             const data = map[key];
 

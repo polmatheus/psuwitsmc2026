@@ -175,7 +175,7 @@
             });
         }
 
-        // 3. ดึงรายชื่อนักเรียน (ปรับปรุงให้ใช้คอลัมน์ house ตามที่คุณแจ้ง)
+        // ฟังก์ชันดึงรายชื่อนักเรียน (อัปเกรดใหม่ เจาะจงคอลัมน์ house โดยตรง)
         async function fetchStudentData() {
             const date = document.getElementById('checkDate').value;
             const house = document.getElementById('houseSelect').value;
@@ -195,14 +195,19 @@
                 let fetchStart = 0;
                 let keepFetching = true;
 
+                // 1. ดึงนักเรียนแบบเจาะจงคอลัมน์ (เพื่อป้องกันคอลัมน์ขาดหาย และป้องกัน Pagination Drop)
                 while (keepFetching) {
                     const { data: records, error: err1 } = await client
                         .from('students')
-                        .select('*')
+                        .select('student_id, fullname, house') // 🔥 ล็อกเป้าหมายไปที่คอลัมน์ house โดยตรง
                         .order('student_id', { ascending: true })
                         .range(fetchStart, fetchStart + 999);
 
-                    if (err1) throw err1;
+                    if (err1) {
+                        console.error("Supabase Error:", err1);
+                        throw new Error(`ไม่พบคอลัมน์หรือเกิดข้อผิดพลาด: ${err1.message}`);
+                    }
+
                     if (records && records.length > 0) {
                         allStudents.push(...records);
                         fetchStart += records.length;
@@ -210,12 +215,19 @@
                     if (!records || records.length < 1000) keepFetching = false;
                 }
 
-                // 🔥 ปรับแก้ตรงนี้: ใช้คอลัมน์ s.house ตามที่คุณระบุ
+                // หากตารางว่างเปล่า (ไม่มีข้อมูลเลย)
+                if (allStudents.length === 0) {
+                    Swal.fire('ไม่พบข้อมูล', 'ไม่มีรายชื่อนักเรียนในฐานข้อมูล (โปรดตรวจสอบตาราง students)', 'warning');
+                    return;
+                }
+
+                // 2. กรองข้อมูลเฉพาะ "บ้าน" ที่เลือก
                 const students = allStudents.filter(s => {
                     const studentHouse = String(s.house || '').replace(/\s+/g, '').toUpperCase();
                     return studentHouse === safeHouse;
                 });
 
+                // 3. ดึงประวัติการเช็คชื่อ
                 const { data: history, error: err2 } = await client
                     .from('daily_attendance')
                     .select('student_id, status, recorded_by')
@@ -250,7 +262,7 @@
 
             } catch (e) {
                 console.error(e);
-                Swal.fire('Error', 'เกิดข้อผิดพลาดในการดึงข้อมูล', 'error');
+                Swal.fire('Error', e.message || 'เกิดข้อผิดพลาดในการดึงข้อมูล', 'error');
             }
         }
 
@@ -258,7 +270,8 @@
             const tbody = document.getElementById('studentTbody');
             tbody.innerHTML = '';
             if (students.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="3" class="text-center py-5 text-muted fw-bold">ไม่พบรายชื่อนักเรียนใน ${document.getElementById('houseSelect').value}</td></tr>`;
+                // แจ้งเตือนแบบชัดเจนถ้าหาเด็กไม่เจอ
+                tbody.innerHTML = `<tr><td colspan="3" class="text-center py-5 text-muted fw-bold">ไม่พบรายชื่อนักเรียนใน <span class="text-danger">${document.getElementById('houseSelect').value}</span></td></tr>`;
                 return;
             }
             students.forEach(s => {
@@ -285,13 +298,17 @@
             const topic = document.getElementById('topicSelect').value;
             const period = document.getElementById('periodSelect').value;
             const teacher = document.getElementById('teacherSelect').value;
+            
             if (!teacher) { Swal.fire('ระบุครูผู้สอน', 'กรุณาเลือกชื่อครูผู้สอนก่อนบันทึก', 'warning'); return; }
+            
             const payload = masterStudents.map(s => ({
                 check_date: date, module_type: 'smartcare', student_id: s.student_id,
                 status: document.querySelector(`input[name="st_${s.student_id}"]:checked`).value,
                 target_group: house, subject_name: topic, period: period, recorded_by: teacher 
             }));
+            
             Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            
             try {
                 await client.from('daily_attendance').delete().eq('check_date', date).eq('module_type', 'smartcare').eq('target_group', house).eq('period', period);
                 const { error } = await client.from('daily_attendance').insert(payload);

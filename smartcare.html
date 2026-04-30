@@ -39,7 +39,6 @@
         <div class="container">
             <img src="https://img2.pic.in.th/pic/PSUWIT_Circle.png" class="logo-circle mb-2" width="100">
             <h2 class="fw-bold"><i class="bi bi-heart-pulse-fill"></i> ระบบเช็คชื่อ SMART wiTH care</h2>
-
         </div>
     </div>
 
@@ -69,13 +68,13 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label fw-bold" style="color: #e65100;">หัวข้อ SMART</label>
-                    <select id="topicSelect" class="form-select form-select-lg">
+                    <select id="topicSelect" class="form-select form-select-lg" onchange="filterTeachers()">
                         <option value="">-- เลือกหัวข้อ --</option>
-                        <option value="เฉดสีวิถีไทย:สานสุนทรีย์ผ่านผืนผ้า"">เฉดสีวิถีไทย:สานสุนทรีย์ผ่านผืนผ้า"</option>
+                        <option value="เฉดสีวิถีไทย:สานสุนทรีย์ผ่านผืนผ้า">เฉดสีวิถีไทย:สานสุนทรีย์ผ่านผืนผ้า</option>
                         <option value="รอบรู้ (ภัย) ใกล้ตัว">รอบรู้ (ภัย) ใกล้ตัว</option>
                         <option value="Origami and Drawing Proverbs">Origami and Drawing Proverbs</option>
                         <option value="Mystery Bag Challenge I">Mystery Bag Challenge I</option>
-                        <option value="Next Gen Manners">Next Gen Manners </option>
+                        <option value="Next Gen Manners">Next Gen Manners</option>
                         <option value="From Real Life to Responsibility">From Real Life to Responsibility</option>
                     </select>
                 </div>
@@ -91,7 +90,7 @@
                 <div class="col-md-4">
                     <label class="form-label fw-bold" style="color: #e65100;">ครูผู้สอน</label>
                     <select id="teacherSelect" class="form-select form-select-lg">
-                        <option value="">-- กำลังโหลดครูผู้สอน... --</option>
+                        <option value="">-- กรุณาเลือกหัวข้อก่อน --</option>
                     </select>
                 </div>
                 <div class="col-md-8 d-flex align-items-end">
@@ -120,8 +119,7 @@
                                 <th width="50%">สถานะการเข้าเรียน</th>
                             </tr>
                         </thead>
-                        <tbody id="studentTbody">
-                            </tbody>
+                        <tbody id="studentTbody"></tbody>
                     </table>
                 </div>
             </div>
@@ -139,31 +137,50 @@
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let masterStudents = [];
+        let masterTeachers = [];
 
         document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('checkDate').valueAsDate = new Date();
             await loadTeacherData();
         });
 
-        // ดึงรายชื่อครูทั้งหมดมาใส่ Dropdown
+        // 1. ดึงรายชื่อครูและหัวข้อ SMART (จากคอลัมน์ smart_care_share)
         async function loadTeacherData() {
             try {
-                const { data, error } = await client.from('teachers').select('fullname').range(0, 9999);
+                // ดึงชื่อครูและกิจกรรมจากคอลัมน์ smart_care_share ตามที่คุณระบุ
+                const { data, error } = await client.from('teachers').select('fullname, smart_care_share').range(0, 9999);
                 if (error) throw error;
                 
-                const uniqueTeachers = [...new Set(data.map(t => t.fullname ? t.fullname.trim() : ''))].filter(t => t !== '');
-                uniqueTeachers.sort((a, b) => a.localeCompare(b, 'th'));
-                
-                const dropDown = document.getElementById('teacherSelect');
-                dropDown.innerHTML = '<option value="">-- เลือกครูผู้สอน --</option>';
-                uniqueTeachers.forEach(t => dropDown.innerHTML += `<option value="${t}">${t}</option>`);
+                masterTeachers = data.map(t => ({
+                    fullname: t.fullname ? t.fullname.trim() : '',
+                    topic: t.smart_care_share ? t.smart_care_share.trim() : '' 
+                }));
             } catch (err) {
                 console.error(err);
                 document.getElementById('teacherSelect').innerHTML = '<option value="">-- โหลดข้อมูลล้มเหลว --</option>';
             }
         }
 
-        // ดึงรายชื่อนักเรียนตามบ้าน
+        // 2. กรองครูตามหัวข้อที่เลือก
+        function filterTeachers() {
+            const selectedTopic = document.getElementById('topicSelect').value.trim();
+            const teacherDropdown = document.getElementById('teacherSelect');
+            teacherDropdown.innerHTML = '<option value="">-- เลือกครูผู้สอน --</option>';
+            
+            if (!selectedTopic) return;
+            
+            // ค้นหาครูที่มีข้อมูลในคอลัมน์ smart_care_share ตรงกับหัวข้อที่เลือก
+            const filtered = masterTeachers.filter(t => t.topic === selectedTopic);
+            const uniqueTeachers = [...new Set(filtered.map(t => t.fullname))].filter(t => t !== '');
+            
+            uniqueTeachers.sort((a, b) => a.localeCompare(b, 'th'));
+
+            uniqueTeachers.forEach(t => {
+                teacherDropdown.innerHTML += `<option value="${t}">${t}</option>`;
+            });
+        }
+
+        // 3. ดึงรายชื่อนักเรียน
         async function fetchStudentData() {
             const date = document.getElementById('checkDate').value;
             const house = document.getElementById('houseSelect').value;
@@ -178,8 +195,7 @@
             Swal.fire({ title: 'กำลังโหลดข้อมูล...', didOpen: () => Swal.showLoading() });
 
             try {
-                // 1. ดึงเด็กตามบ้านที่เลือก (คอลัมน์ target_group ต้องตรงกับ "บ้าน X")
-                const safeHouse = house.replace(/\s+/g, ''); // ทำให้เป็น "บ้าน1" แบบไม่มีเว้นวรรค
+                const safeHouse = house.replace(/\s+/g, ''); 
                 const { data: allStudents, error: err1 } = await client
                     .from('students')
                     .select('*')
@@ -191,7 +207,6 @@
                     .filter(s => s.target_group && s.target_group.replace(/\s+/g, '') === safeHouse)
                     .sort((a, b) => a.student_id.localeCompare(b.student_id));
 
-                // 2. ดึงประวัติการเช็คชื่อ
                 const { data: history, error: err2 } = await client
                     .from('daily_attendance')
                     .select('student_id, status, recorded_by')
@@ -203,9 +218,17 @@
 
                 if (err2) throw err2;
 
-                // ถ้าเคยเช็คแล้ว ให้เลือกชื่อครูอัตโนมัติ
                 if (history.length > 0 && history[0].recorded_by) {
-                    document.getElementById('teacherSelect').value = history[0].recorded_by;
+                    const currentTeacher = history[0].recorded_by;
+                    const dropdown = document.getElementById('teacherSelect');
+                    let exists = false;
+                    for(let i=0; i<dropdown.options.length; i++){
+                        if(dropdown.options[i].value === currentTeacher) exists = true;
+                    }
+                    if(!exists) {
+                        dropdown.innerHTML += `<option value="${currentTeacher}">${currentTeacher}</option>`;
+                    }
+                    dropdown.value = currentTeacher;
                 }
 
                 const historyMap = {};
@@ -283,16 +306,15 @@
                 module_type: 'smartcare',
                 student_id: s.student_id,
                 status: document.querySelector(`input[name="st_${s.student_id}"]:checked`).value,
-                target_group: house, // เก็บชื่อบ้าน
-                subject_name: topic, // เก็บชื่อหัวข้อ
-                period: period,      // เก็บคาบเรียน
+                target_group: house, 
+                subject_name: topic, 
+                period: period,      
                 recorded_by: teacher 
             }));
 
             Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
             try {
-                // ล้างข้อมูลเก่าก่อนบันทึกทับ
                 await client.from('daily_attendance').delete()
                     .eq('check_date', date)
                     .eq('module_type', 'smartcare')

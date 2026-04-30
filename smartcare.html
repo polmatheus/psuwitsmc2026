@@ -78,8 +78,9 @@
                         <option value="Next Gen Manners">Next Gen Manners </option>
                         <option value="From Real Life to Responsibility">From Real Life to Responsibility</option>
                     </select>
+                </div>
                 <div class="col-md-2">
-                    <label class="form-label fw-bold">คาบเรียน</label>
+                    <label class="form-label fw-bold" style="color: #e65100;">คาบเรียน</label>
                     <select id="periodSelect" class="form-select form-select-lg">
                         <option value="คาบ 1">คาบ 1</option>
                         <option value="คาบ 2">คาบ 2</option>
@@ -87,14 +88,14 @@
                         <option value="คาบ 4">คาบ 4</option>
                     </select>
                 </div>
-                <div class="col-md-8">
-                    <label class="form-label fw-bold">ครูผู้สอน</label>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold" style="color: #e65100;">ครูผู้สอน</label>
                     <select id="teacherSelect" class="form-select form-select-lg">
-                        <option value="">-- เลือกครูผู้สอน --</option>
+                        <option value="">-- กำลังโหลดครูผู้สอน... --</option>
                     </select>
                 </div>
-                <div class="col-md-4 d-flex align-items-end">
-                    <button onclick="fetchStudentData()" class="btn btn-warning btn-lg w-100 fw-bold text-dark">
+                <div class="col-md-8 d-flex align-items-end">
+                    <button onclick="fetchStudentData()" class="btn btn-lg w-100 fw-bold text-white shadow-sm" style="background-color: #e65100;">
                         <i class="bi bi-people-fill"></i> ดึงรายชื่อนักเรียน
                     </button>
                 </div>
@@ -103,8 +104,8 @@
 
         <div id="attendanceArea" style="display: none;">
             <div class="sticky-header d-flex justify-content-between align-items-center mb-3">
-                <h4 class="fw-bold m-0 text-dark" id="listTitle">รายชื่อนักเรียน</h4>
-                <button onclick="saveToDatabase()" class="btn btn-success btn-lg px-5 fw-bold rounded-pill shadow">
+                <h4 class="fw-bold m-0" style="color: #e65100;" id="listTitle">รายชื่อนักเรียน</h4>
+                <button onclick="saveToDatabase()" class="btn btn-lg px-5 fw-bold rounded-pill shadow text-white" style="background-color: #e65100;">
                     <i class="bi bi-cloud-check"></i> บันทึกข้อมูลทั้งหมด
                 </button>
             </div>
@@ -138,94 +139,71 @@
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let masterStudents = [];
-        let masterTeachers = [];
 
         document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('checkDate').valueAsDate = new Date();
             await loadTeacherData();
         });
 
-        // 1. ดึงข้อมูลหัวข้อ smart_care_share 
+        // ดึงรายชื่อครูทั้งหมดมาใส่ Dropdown
         async function loadTeacherData() {
-            const { data, error } = await client.from('teachers')
-                .select('smart_care_share, fullname')
-                .range(0, 9999);
+            try {
+                const { data, error } = await client.from('teachers').select('fullname').range(0, 9999);
+                if (error) throw error;
                 
-            if (error) { console.error(error); return; }
-            
-            masterTeachers = data.map(item => ({
-                smart_care_share: item.smart_care_share ? item.smart_care_share.trim() : '',
-                fullname: item.fullname ? item.fullname.trim() : ''
-            }));
-            
-            const topics = [...new Set(masterTeachers.map(t => t.smart_care_share))].filter(s => s && s !== 'EMPTY');
-            topics.sort((a, b) => a.localeCompare(b, 'th'));
-            
-            const dropDown = document.getElementById('smartCareSelect');
-            dropDown.innerHTML = '<option value="">-- เลือกหัวข้อ --</option>';
-            topics.forEach(s => {
-                dropDown.innerHTML += `<option value="${s}">${s}</option>`;
-            });
+                const uniqueTeachers = [...new Set(data.map(t => t.fullname ? t.fullname.trim() : ''))].filter(t => t !== '');
+                uniqueTeachers.sort((a, b) => a.localeCompare(b, 'th'));
+                
+                const dropDown = document.getElementById('teacherSelect');
+                dropDown.innerHTML = '<option value="">-- เลือกครูผู้สอน --</option>';
+                uniqueTeachers.forEach(t => dropDown.innerHTML += `<option value="${t}">${t}</option>`);
+            } catch (err) {
+                console.error(err);
+                document.getElementById('teacherSelect').innerHTML = '<option value="">-- โหลดข้อมูลล้มเหลว --</option>';
+            }
         }
 
-        // 2. กรองครูตามหัวข้อที่เลือก
-        function filterTeachers() {
-            const selectedTopic = document.getElementById('smartCareSelect').value.trim();
-            const teacherDropdown = document.getElementById('teacherSelect');
-            teacherDropdown.innerHTML = '<option value="">-- เลือกครูผู้สอน --</option>';
-            
-            if (!selectedTopic) return;
-            
-            const filtered = masterTeachers.filter(t => t.smart_care_share === selectedTopic);
-            const uniqueTeachers = [...new Set(filtered.map(t => t.fullname))];
-            
-            uniqueTeachers.sort((a, b) => a.localeCompare(b, 'th'));
-
-            uniqueTeachers.forEach(t => {
-                if(t) teacherDropdown.innerHTML += `<option value="${t}">${t}</option>`;
-            });
-        }
-
-        // 3. ดึงรายชื่อนักเรียนจาก บ้าน ที่เลือก
+        // ดึงรายชื่อนักเรียนตามบ้าน
         async function fetchStudentData() {
-            const house = document.getElementById('houseSelect').value;
             const date = document.getElementById('checkDate').value;
-            const topic = document.getElementById('smartCareSelect').value;
+            const house = document.getElementById('houseSelect').value;
+            const topic = document.getElementById('topicSelect').value;
             const period = document.getElementById('periodSelect').value;
 
-            if (!house || !topic) {
-                Swal.fire('ข้อมูลไม่ครบ', 'กรุณาเลือก บ้าน และ หัวข้อ SMART wiTH care', 'warning');
+            if (!date || !house || !topic || !period) {
+                Swal.fire('ข้อมูลไม่ครบ', 'กรุณาเลือก วันที่, บ้าน, หัวข้อ และ คาบเรียน ให้ครบถ้วน', 'warning');
                 return;
             }
 
-            Swal.fire({ title: 'กำลังโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            Swal.fire({ title: 'กำลังโหลดข้อมูล...', didOpen: () => Swal.showLoading() });
 
             try {
-                // 🔥 แก้ปัญหาดึงเด็กไม่ครบด้วยการดึงมาหมด แล้วกรอง + ตัดเว้นวรรค
+                // 1. ดึงเด็กตามบ้านที่เลือก (คอลัมน์ target_group ต้องตรงกับ "บ้าน X")
+                const safeHouse = house.replace(/\s+/g, ''); // ทำให้เป็น "บ้าน1" แบบไม่มีเว้นวรรค
                 const { data: allStudents, error: err1 } = await client
                     .from('students')
-                    .select('student_id, fullname, house')
+                    .select('*')
                     .range(0, 9999);
 
                 if (err1) throw err1;
 
-                const safeHouse = house.replace(/\s+/g, '');
                 const students = allStudents
-                    .filter(s => s.house && s.house.replace(/\s+/g, '') === safeHouse)
+                    .filter(s => s.target_group && s.target_group.replace(/\s+/g, '') === safeHouse)
                     .sort((a, b) => a.student_id.localeCompare(b.student_id));
 
+                // 2. ดึงประวัติการเช็คชื่อ
                 const { data: history, error: err2 } = await client
                     .from('daily_attendance')
                     .select('student_id, status, recorded_by')
                     .eq('check_date', date)
-                    .eq('module_type', 'smart_care') 
-                    .eq('target_group', house)
-                    .eq('period', period) // 🔥 ค้นหาประวัติเฉพาะ วัน+บ้าน+คาบ (ไม่สนหัวข้อ)
+                    .eq('module_type', 'smartcare') 
+                    .eq('target_group', house) 
+                    .eq('period', period) 
                     .range(0, 9999);
 
                 if (err2) throw err2;
 
-                // ดึงชื่อครูคนล่าสุดขึ้นมาโชว์
+                // ถ้าเคยเช็คแล้ว ให้เลือกชื่อครูอัตโนมัติ
                 if (history.length > 0 && history[0].recorded_by) {
                     document.getElementById('teacherSelect').value = history[0].recorded_by;
                 }
@@ -237,30 +215,31 @@
                 renderStudentTable(students, historyMap);
                 
                 document.getElementById('attendanceArea').style.display = 'block';
-                document.getElementById('listTitle').innerText = `รายชื่อนักเรียน ${house} (${students.length} คน)`;
+                document.getElementById('listTitle').innerText = `รายชื่อนักเรียน ${house} (${period}) - ${students.length} คน`;
                 Swal.close();
 
             } catch (e) {
-                Swal.fire('Error', e.message, 'error');
+                console.error(e);
+                Swal.fire('Error', 'เกิดข้อผิดพลาดในการดึงข้อมูลนักเรียน', 'error');
             }
         }
 
-        // 4. แสดงผลตาราง
         function renderStudentTable(students, historyMap) {
             const tbody = document.getElementById('studentTbody');
             tbody.innerHTML = '';
 
             if (students.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-muted">ไม่พบข้อมูลนักเรียนใน ${document.getElementById('houseSelect').value}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-muted">ไม่พบรายชื่อนักเรียนในบ้านที่เลือก</td></tr>`;
                 return;
             }
 
             students.forEach(s => {
                 const currentStatus = historyMap[s.student_id] || 'present';
+
                 const row = `
                     <tr>
                         <td class="text-center font-monospace fw-bold text-secondary">${s.student_id}</td>
-                        <td>${s.fullname}</td>
+                        <td class="fw-bold">${s.fullname}</td>
                         <td>
                             <div class="row g-1 status-options">
                                 <div class="col-3">
@@ -287,8 +266,49 @@
             });
         }
 
-        // 5. บันทึกลงตาราง daily_attendance
         async function saveToDatabase() {
             const date = document.getElementById('checkDate').value;
             const house = document.getElementById('houseSelect').value;
-            const topic =
+            const topic = document.getElementById('topicSelect').value;
+            const period = document.getElementById('periodSelect').value;
+            const teacher = document.getElementById('teacherSelect').value;
+
+            if (!teacher) {
+                Swal.fire('ระบุครูผู้สอน', 'กรุณาเลือกชื่อครูผู้สอนก่อนบันทึก', 'warning');
+                return;
+            }
+
+            const payload = masterStudents.map(s => ({
+                check_date: date,
+                module_type: 'smartcare',
+                student_id: s.student_id,
+                status: document.querySelector(`input[name="st_${s.student_id}"]:checked`).value,
+                target_group: house, // เก็บชื่อบ้าน
+                subject_name: topic, // เก็บชื่อหัวข้อ
+                period: period,      // เก็บคาบเรียน
+                recorded_by: teacher 
+            }));
+
+            Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            try {
+                // ล้างข้อมูลเก่าก่อนบันทึกทับ
+                await client.from('daily_attendance').delete()
+                    .eq('check_date', date)
+                    .eq('module_type', 'smartcare')
+                    .eq('target_group', house)
+                    .eq('period', period);
+
+                const { error } = await client.from('daily_attendance').insert(payload);
+                if (error) throw error;
+
+                Swal.fire({ icon: 'success', title: 'บันทึกข้อมูลเรียบร้อย', timer: 1500, showConfirmButton: false });
+
+            } catch (e) {
+                console.error(e);
+                Swal.fire('Error', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+            }
+        }
+    </script>
+</body>
+</html>

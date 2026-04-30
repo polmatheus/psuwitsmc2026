@@ -18,7 +18,6 @@
         .filter-card { background: white; border-radius: 15px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 25px; }
         .student-card { background: white; border-radius: 15px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 20px; }
         
-        /* Custom Radio Buttons */
         .status-options input[type="radio"] { display: none; }
         .status-options label { 
             padding: 8px; border: 1px solid #dee2e6; border-radius: 8px; 
@@ -133,7 +132,6 @@
 
     <script src="supabase-config.js"></script>
     <script>
-        // เผื่อกรณียังไม่ได้ทำแยกไฟล์ config ให้รันโค้ดบรรทัดนี้แทน (ถ้าทำไฟล์แยกแล้วลบ 3 บรรทัดนี้ได้เลย)
         if (typeof client === 'undefined') {
             const SUPABASE_URL = 'https://pqkaqsxmbewilzruogdw.supabase.co'; 
             const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxa2Fxc3htYmV3aWx6cnVvZ2R3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0ODgzMTksImV4cCI6MjA4NDA2NDMxOX0.TFyfNcFXcUUF29Iexmkjf6EaNIXAv8KuOFY_ydAY_z8'; 
@@ -148,59 +146,36 @@
             await loadTeacherData();
         });
 
-        // 1. ดึงรายชื่อครูและหัวข้อ SMART มาตุนไว้
         async function loadTeacherData() {
             try {
-                // เคลียร์ dropdown ป้องกันบัคครูโผล่ทุกคนตอนเปิดหน้าแรก
                 document.getElementById('teacherSelect').innerHTML = '<option value="">-- กรุณาเลือกหัวข้อก่อน --</option>';
-
                 const { data, error } = await client.from('teachers').select('fullname, smart_care_share').range(0, 9999);
                 if (error) throw error;
-                
                 masterTeachers = data.map(t => ({
                     fullname: t.fullname ? t.fullname.trim() : '',
                     topic: t.smart_care_share ? t.smart_care_share.trim() : '' 
                 }));
-            } catch (err) {
-                console.error(err);
-            }
+            } catch (err) { console.error(err); }
         }
 
-        // 2. กรองครูตามหัวข้อที่เลือก (แบบแม่นยำสูง)
         function filterTeachers() {
             const selectedTopic = document.getElementById('topicSelect').value.trim();
             const teacherDropdown = document.getElementById('teacherSelect');
-            
-            if (!selectedTopic) {
-                teacherDropdown.innerHTML = '<option value="">-- กรุณาเลือกหัวข้อก่อน --</option>';
-                return;
-            }
-            
+            if (!selectedTopic) { teacherDropdown.innerHTML = '<option value="">-- กรุณาเลือกหัวข้อก่อน --</option>'; return; }
             teacherDropdown.innerHTML = '<option value="">-- เลือกครูผู้สอน --</option>';
-            
-            // ลบเว้นวรรคและวงเล็บทิ้งทั้งหมด เพื่อกันปัญหาการพิมพ์ผิดในฐานข้อมูล
             const safeSelected = selectedTopic.replace(/[\s\(\)]/g, '').toLowerCase();
-            
             const filtered = masterTeachers.filter(t => {
                 if (!t.topic) return false;
                 const safeTeacherTopic = t.topic.replace(/[\s\(\)]/g, '').toLowerCase();
-                // เช็คว่าคำตรงกัน หรือมีคำซ่อนอยู่ในนั้น
-                return safeTeacherTopic === safeSelected || safeTeacherTopic.includes(safeSelected) || safeSelected.includes(safeTeacherTopic);
+                return safeTeacherTopic === safeSelected || safeTeacherTopic.includes(safeSelected);
             });
-            
             const uniqueTeachers = [...new Set(filtered.map(t => t.fullname))].filter(t => t !== '');
-            uniqueTeachers.sort((a, b) => a.localeCompare(b, 'th'));
-
-            if (uniqueTeachers.length === 0) {
-                teacherDropdown.innerHTML = '<option value="">-- ไม่พบครูในหัวข้อนี้ (ตรวจสอบข้อมูลใน DB) --</option>';
-            } else {
-                uniqueTeachers.forEach(t => {
-                    teacherDropdown.innerHTML += `<option value="${t}">${t}</option>`;
-                });
-            }
+            uniqueTeachers.sort((a, b) => a.localeCompare(b, 'th')).forEach(t => {
+                teacherDropdown.innerHTML += `<option value="${t}">${t}</option>`;
+            });
         }
 
-        // 3. ดึงรายชื่อนักเรียน
+        // 3. ดึงรายชื่อนักเรียน (ปรับปรุงให้ใช้คอลัมน์ house ตามที่คุณแจ้ง)
         async function fetchStudentData() {
             const date = document.getElementById('checkDate').value;
             const house = document.getElementById('houseSelect').value;
@@ -208,24 +183,38 @@
             const period = document.getElementById('periodSelect').value;
 
             if (!date || !house || !topic || !period) {
-                Swal.fire('ข้อมูลไม่ครบ', 'กรุณาเลือก วันที่, บ้าน, หัวข้อ และ คาบเรียน ให้ครบถ้วน', 'warning');
+                Swal.fire('ข้อมูลไม่ครบ', 'กรุณาเลือกข้อมูลให้ครบถ้วน', 'warning');
                 return;
             }
 
-            Swal.fire({ title: 'กำลังโหลดข้อมูล...', didOpen: () => Swal.showLoading() });
+            Swal.fire({ title: 'กำลังโหลดข้อมูลนักเรียน...', didOpen: () => Swal.showLoading() });
 
             try {
-                const safeHouse = house.replace(/\s+/g, ''); 
-                const { data: allStudents, error: err1 } = await client
-                    .from('students')
-                    .select('*')
-                    .range(0, 9999);
+                const safeHouse = house.replace(/\s+/g, '').toUpperCase(); 
+                let allStudents = [];
+                let fetchStart = 0;
+                let keepFetching = true;
 
-                if (err1) throw err1;
+                while (keepFetching) {
+                    const { data: records, error: err1 } = await client
+                        .from('students')
+                        .select('*')
+                        .order('student_id', { ascending: true })
+                        .range(fetchStart, fetchStart + 999);
 
-                const students = allStudents
-                    .filter(s => s.target_group && s.target_group.replace(/\s+/g, '') === safeHouse)
-                    .sort((a, b) => a.student_id.localeCompare(b.student_id));
+                    if (err1) throw err1;
+                    if (records && records.length > 0) {
+                        allStudents.push(...records);
+                        fetchStart += records.length;
+                    }
+                    if (!records || records.length < 1000) keepFetching = false;
+                }
+
+                // 🔥 ปรับแก้ตรงนี้: ใช้คอลัมน์ s.house ตามที่คุณระบุ
+                const students = allStudents.filter(s => {
+                    const studentHouse = String(s.house || '').replace(/\s+/g, '').toUpperCase();
+                    return studentHouse === safeHouse;
+                });
 
                 const { data: history, error: err2 } = await client
                     .from('daily_attendance')
@@ -245,9 +234,7 @@
                     for(let i=0; i<dropdown.options.length; i++){
                         if(dropdown.options[i].value === currentTeacher) exists = true;
                     }
-                    if(!exists) {
-                        dropdown.innerHTML += `<option value="${currentTeacher}">${currentTeacher}</option>`;
-                    }
+                    if(!exists) dropdown.innerHTML += `<option value="${currentTeacher}">${currentTeacher}</option>`;
                     dropdown.value = currentTeacher;
                 }
 
@@ -263,49 +250,32 @@
 
             } catch (e) {
                 console.error(e);
-                Swal.fire('Error', 'เกิดข้อผิดพลาดในการดึงข้อมูลนักเรียน', 'error');
+                Swal.fire('Error', 'เกิดข้อผิดพลาดในการดึงข้อมูล', 'error');
             }
         }
 
         function renderStudentTable(students, historyMap) {
             const tbody = document.getElementById('studentTbody');
             tbody.innerHTML = '';
-
             if (students.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-muted">ไม่พบรายชื่อนักเรียนในบ้านที่เลือก</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="3" class="text-center py-5 text-muted fw-bold">ไม่พบรายชื่อนักเรียนใน ${document.getElementById('houseSelect').value}</td></tr>`;
                 return;
             }
-
             students.forEach(s => {
                 const currentStatus = historyMap[s.student_id] || 'present';
-
-                const row = `
+                tbody.innerHTML += `
                     <tr>
                         <td class="text-center font-monospace fw-bold text-secondary">${s.student_id}</td>
                         <td class="fw-bold">${s.fullname}</td>
                         <td>
                             <div class="row g-1 status-options">
-                                <div class="col-3">
-                                    <input type="radio" name="st_${s.student_id}" id="p_${s.student_id}" value="present" ${currentStatus==='present'?'checked':''}>
-                                    <label for="p_${s.student_id}">มา</label>
-                                </div>
-                                <div class="col-3">
-                                    <input type="radio" name="st_${s.student_id}" id="a_${s.student_id}" value="absent" ${currentStatus==='absent'?'checked':''}>
-                                    <label for="a_${s.student_id}">ขาด</label>
-                                </div>
-                                <div class="col-3">
-                                    <input type="radio" name="st_${s.student_id}" id="l_${s.student_id}" value="leave" ${currentStatus==='leave'?'checked':''}>
-                                    <label for="l_${s.student_id}">ลา</label>
-                                </div>
-                                <div class="col-3">
-                                    <input type="radio" name="st_${s.student_id}" id="t_${s.student_id}" value="late" ${currentStatus==='late'?'checked':''}>
-                                    <label for="t_${s.student_id}">สาย</label>
-                                </div>
+                                <div class="col-3"><input type="radio" name="st_${s.student_id}" id="p_${s.student_id}" value="present" ${currentStatus==='present'?'checked':''}><label for="p_${s.student_id}">มา</label></div>
+                                <div class="col-3"><input type="radio" name="st_${s.student_id}" id="a_${s.student_id}" value="absent" ${currentStatus==='absent'?'checked':''}><label for="a_${s.student_id}">ขาด</label></div>
+                                <div class="col-3"><input type="radio" name="st_${s.student_id}" id="l_${s.student_id}" value="leave" ${currentStatus==='leave'?'checked':''}><label for="l_${s.student_id}">ลา</label></div>
+                                <div class="col-3"><input type="radio" name="st_${s.student_id}" id="t_${s.student_id}" value="late" ${currentStatus==='late'?'checked':''}><label for="t_${s.student_id}">สาย</label></div>
                             </div>
                         </td>
-                    </tr>
-                `;
-                tbody.innerHTML += row;
+                    </tr>`;
             });
         }
 
@@ -315,41 +285,19 @@
             const topic = document.getElementById('topicSelect').value;
             const period = document.getElementById('periodSelect').value;
             const teacher = document.getElementById('teacherSelect').value;
-
-            if (!teacher) {
-                Swal.fire('ระบุครูผู้สอน', 'กรุณาเลือกชื่อครูผู้สอนก่อนบันทึก', 'warning');
-                return;
-            }
-
+            if (!teacher) { Swal.fire('ระบุครูผู้สอน', 'กรุณาเลือกชื่อครูผู้สอนก่อนบันทึก', 'warning'); return; }
             const payload = masterStudents.map(s => ({
-                check_date: date,
-                module_type: 'smartcare',
-                student_id: s.student_id,
+                check_date: date, module_type: 'smartcare', student_id: s.student_id,
                 status: document.querySelector(`input[name="st_${s.student_id}"]:checked`).value,
-                target_group: house, 
-                subject_name: topic, 
-                period: period,      
-                recorded_by: teacher 
+                target_group: house, subject_name: topic, period: period, recorded_by: teacher 
             }));
-
             Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
             try {
-                await client.from('daily_attendance').delete()
-                    .eq('check_date', date)
-                    .eq('module_type', 'smartcare')
-                    .eq('target_group', house)
-                    .eq('period', period);
-
+                await client.from('daily_attendance').delete().eq('check_date', date).eq('module_type', 'smartcare').eq('target_group', house).eq('period', period);
                 const { error } = await client.from('daily_attendance').insert(payload);
                 if (error) throw error;
-
                 Swal.fire({ icon: 'success', title: 'บันทึกข้อมูลเรียบร้อย', timer: 1500, showConfirmButton: false });
-
-            } catch (e) {
-                console.error(e);
-                Swal.fire('Error', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
-            }
+            } catch (e) { console.error(e); Swal.fire('Error', 'ไม่สามารถบันทึกข้อมูลได้', 'error'); }
         }
     </script>
 </body>

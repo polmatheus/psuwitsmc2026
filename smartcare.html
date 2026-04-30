@@ -131,10 +131,14 @@
 
     </div>
 
+    <script src="supabase-config.js"></script>
     <script>
-        const SUPABASE_URL = 'https://pqkaqsxmbewilzruogdw.supabase.co'; 
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxa2Fxc3htYmV3aWx6cnVvZ2R3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0ODgzMTksImV4cCI6MjA4NDA2NDMxOX0.TFyfNcFXcUUF29Iexmkjf6EaNIXAv8KuOFY_ydAY_z8'; 
-        const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // เผื่อกรณียังไม่ได้ทำแยกไฟล์ config ให้รันโค้ดบรรทัดนี้แทน (ถ้าทำไฟล์แยกแล้วลบ 3 บรรทัดนี้ได้เลย)
+        if (typeof client === 'undefined') {
+            const SUPABASE_URL = 'https://pqkaqsxmbewilzruogdw.supabase.co'; 
+            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxa2Fxc3htYmV3aWx6cnVvZ2R3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0ODgzMTksImV4cCI6MjA4NDA2NDMxOX0.TFyfNcFXcUUF29Iexmkjf6EaNIXAv8KuOFY_ydAY_z8'; 
+            window.client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        }
 
         let masterStudents = [];
         let masterTeachers = [];
@@ -144,10 +148,12 @@
             await loadTeacherData();
         });
 
-        // 1. ดึงรายชื่อครูและหัวข้อ SMART (จากคอลัมน์ smart_care_share)
+        // 1. ดึงรายชื่อครูและหัวข้อ SMART มาตุนไว้
         async function loadTeacherData() {
             try {
-                // ดึงชื่อครูและกิจกรรมจากคอลัมน์ smart_care_share ตามที่คุณระบุ
+                // เคลียร์ dropdown ป้องกันบัคครูโผล่ทุกคนตอนเปิดหน้าแรก
+                document.getElementById('teacherSelect').innerHTML = '<option value="">-- กรุณาเลือกหัวข้อก่อน --</option>';
+
                 const { data, error } = await client.from('teachers').select('fullname, smart_care_share').range(0, 9999);
                 if (error) throw error;
                 
@@ -157,27 +163,41 @@
                 }));
             } catch (err) {
                 console.error(err);
-                document.getElementById('teacherSelect').innerHTML = '<option value="">-- โหลดข้อมูลล้มเหลว --</option>';
             }
         }
 
-        // 2. กรองครูตามหัวข้อที่เลือก
+        // 2. กรองครูตามหัวข้อที่เลือก (แบบแม่นยำสูง)
         function filterTeachers() {
             const selectedTopic = document.getElementById('topicSelect').value.trim();
             const teacherDropdown = document.getElementById('teacherSelect');
+            
+            if (!selectedTopic) {
+                teacherDropdown.innerHTML = '<option value="">-- กรุณาเลือกหัวข้อก่อน --</option>';
+                return;
+            }
+            
             teacherDropdown.innerHTML = '<option value="">-- เลือกครูผู้สอน --</option>';
             
-            if (!selectedTopic) return;
+            // ลบเว้นวรรคและวงเล็บทิ้งทั้งหมด เพื่อกันปัญหาการพิมพ์ผิดในฐานข้อมูล
+            const safeSelected = selectedTopic.replace(/[\s\(\)]/g, '').toLowerCase();
             
-            // ค้นหาครูที่มีข้อมูลในคอลัมน์ smart_care_share ตรงกับหัวข้อที่เลือก
-            const filtered = masterTeachers.filter(t => t.topic === selectedTopic);
+            const filtered = masterTeachers.filter(t => {
+                if (!t.topic) return false;
+                const safeTeacherTopic = t.topic.replace(/[\s\(\)]/g, '').toLowerCase();
+                // เช็คว่าคำตรงกัน หรือมีคำซ่อนอยู่ในนั้น
+                return safeTeacherTopic === safeSelected || safeTeacherTopic.includes(safeSelected) || safeSelected.includes(safeTeacherTopic);
+            });
+            
             const uniqueTeachers = [...new Set(filtered.map(t => t.fullname))].filter(t => t !== '');
-            
             uniqueTeachers.sort((a, b) => a.localeCompare(b, 'th'));
 
-            uniqueTeachers.forEach(t => {
-                teacherDropdown.innerHTML += `<option value="${t}">${t}</option>`;
-            });
+            if (uniqueTeachers.length === 0) {
+                teacherDropdown.innerHTML = '<option value="">-- ไม่พบครูในหัวข้อนี้ (ตรวจสอบข้อมูลใน DB) --</option>';
+            } else {
+                uniqueTeachers.forEach(t => {
+                    teacherDropdown.innerHTML += `<option value="${t}">${t}</option>`;
+                });
+            }
         }
 
         // 3. ดึงรายชื่อนักเรียน

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ประเมินกิจกรรม - SMART WiTH care and share</title>
+    <title>ระบบประเมินกิจกรรมครูKIDO</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -35,10 +35,15 @@
     </style>
 </head>
 <body>
-
+<div class="header-banner text-center">
+        <div class="container">
+            <img src="https://img2.pic.in.th/pic/PSUWIT_Circle.png" class="logo-circle mb-2" width="100">
+            <h2 class="fw-bold"><i class="bi bi-heart-pulse-fill"></i> ระบบประเมินกิจกรรมครูKIDO</h2>
+        </div>
+    </div>
     <div class="header-banner text-center shadow">
         <div class="container">
-            <h2 class="fw-bold"><i class="bi bi-shield-check"></i> ระบบประเมินกิจกรรมพิเศษ</h2>
+            <h2 class="fw-bold"><i class="bi bi-shield-check"></i> ระบบประเมินกิจกรรมครูKIDO</h2>
             <p class="mb-0 text-light">School Lockdown & First Aid</p>
         </div>
     </div>
@@ -47,9 +52,18 @@
         
         <div class="filter-card mb-4">
             <div class="row g-3">
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label fw-bold">วันที่จัดกิจกรรม</label>
                     <input type="date" id="checkDate" class="form-control form-control-lg">
+                </div>
+                <!-- เพิ่ม Dropdown เลือกช่วงเวลา -->
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">ช่วงเวลา</label>
+                    <select id="periodSelect" class="form-select form-select-lg">
+                        <option value="">-- เลือกช่วง --</option>
+                        <option value="KM">ช่วงเช้า </option>
+                        <option value="KE">ช่วงบ่าย </option>
+                    </select>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label fw-bold text-theme">เลือก กิจกรรม</label>
@@ -61,7 +75,6 @@
                 </div>
                 <div class="col-md-2">
                     <label class="form-label fw-bold">บ้าน (House)</label>
-                    <!-- เพิ่ม onchange เพื่อกรองครูทันทีที่เปลี่ยนบ้าน -->
                     <select id="houseSelect" class="form-select form-select-lg" onchange="filterTeachersByHouse()">
                         <option value="">-- เลือกบ้าน --</option>
                         <option value="บ้าน1">บ้าน 1</option>
@@ -76,13 +89,13 @@
                         <option value="บ้าน10">บ้าน 10</option>
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label fw-bold text-theme">ครูผู้ประเมิน</label>
                     <select id="teacherSelect" class="form-select form-select-lg">
                         <option value="">-- กรุณาเลือกบ้านก่อน --</option>
                     </select>
                 </div>
-                <div class="col-md-12 d-flex align-items-end mt-4">
+                <div class="col-md-12 d-flex align-items-end mt-3">
                     <button onclick="fetchStudentData()" class="btn btn-lg w-100 fw-bold text-white shadow-sm bg-theme">
                         <i class="bi bi-search"></i> ค้นหารายชื่อนักเรียน
                     </button>
@@ -98,9 +111,7 @@
                 </button>
             </div>
 
-            <div class="alert alert-info py-2" id="activityNote">
-                <!-- ข้อความแนะนำจะถูกแทรกที่นี่ด้วย JS -->
-            </div>
+            <div class="alert alert-info py-2" id="activityNote"></div>
 
             <div class="student-card">
                 <div class="table-responsive">
@@ -121,27 +132,23 @@
     </div>
 
     <script>
-        // Supabase Initialization
         const SUPABASE_URL = 'https://pqkaqsxmbewilzruogdw.supabase.co'; 
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxa2Fxc3htYmV3aWx6cnVvZ2R3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0ODgzMTksImV4cCI6MjA4NDA2NDMxOX0.TFyfNcFXcUUF29Iexmkjf6EaNIXAv8KuOFY_ydAY_z8'; 
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let masterStudents = [];
-        let masterTeachers = []; // เพิ่มตัวแปรเก็บข้อมูลครูทั้งหมด
+        let masterTeachers = []; 
 
         document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('checkDate').valueAsDate = new Date();
             await loadTeacherData();
         });
 
-        // โหลดรายชื่อครูและ "บ้าน" ของครูมาเก็บไว้
         async function loadTeacherData() {
             try {
-                // สมมติว่าในตาราง teachers มีคอลัมน์ house
                 const { data, error } = await client.from('teachers').select('fullname, house').range(0, 9999);
                 if (error) throw error;
                 
-                // จัดระเบียบข้อมูลครู และล้างช่องว่างของชื่อบ้านเพื่อป้องกันความผิดพลาดตอนค้นหา
                 masterTeachers = data.map(t => ({
                     fullname: t.fullname ? t.fullname.trim() : '',
                     house: t.house ? String(t.house).replace(/\s+/g, '').toUpperCase() : ''
@@ -150,7 +157,6 @@
             } catch (err) { console.error("Error loading teachers:", err); }
         }
 
-        // ฟังก์ชันสำหรับกรองครูเมื่อเลือก "บ้าน"
         function filterTeachersByHouse() {
             const selectedHouse = document.getElementById('houseSelect').value;
             const teacherDropdown = document.getElementById('teacherSelect');
@@ -161,8 +167,6 @@
             }
 
             const safeSelectedHouse = selectedHouse.replace(/\s+/g, '').toUpperCase();
-            
-            // กรองหาครูที่มี house ตรงกับที่เลือก
             const filteredTeachers = masterTeachers.filter(t => t.house === safeSelectedHouse);
             
             teacherDropdown.innerHTML = '<option value="">-- เลือกครูผู้ประเมิน --</option>';
@@ -180,21 +184,23 @@
 
         async function fetchStudentData() {
             const date = document.getElementById('checkDate').value;
+            const period = document.getElementById('periodSelect').value; // ค่าช่วงเวลา KM/KE
             const activity = document.getElementById('activitySelect').value;
             const house = document.getElementById('houseSelect').value;
             const teacher = document.getElementById('teacherSelect').value;
 
-            if (!date || !activity || !house || !teacher) {
-                Swal.fire('ข้อมูลไม่ครบ', 'กรุณาเลือกวันที่ กิจกรรม บ้าน และครูผู้ประเมินให้ครบถ้วน', 'warning');
+            // ตรวจสอบข้อมูลให้ครบก่อนค้นหา
+            if (!date || !period || !activity || !house || !teacher) {
+                Swal.fire('ข้อมูลไม่ครบ', 'กรุณาเลือกวันที่ ช่วงเวลา กิจกรรม บ้าน และครูให้ครบถ้วน', 'warning');
                 return;
             }
 
             const noteEl = document.getElementById('activityNote');
             if(activity === 'School Lockdown') {
-                noteEl.innerHTML = `<strong><i class="bi bi-info-circle"></i> School Lockdown:</strong> ใครเช็คก็ได้ ระบบจะบันทึก <b>"ผลลัพธ์ล่าสุด"</b> ของบ้านนี้ทับข้อมูลเดิม`;
+                noteEl.innerHTML = `<strong><i class="bi bi-info-circle"></i> School Lockdown:</strong> ใครเช็คก็ได้ ระบบจะบันทึก <b>"ผลลัพธ์ล่าสุด"</b> ของบ้านนี้ทับข้อมูลเดิมในคาบเรียน ${period}`;
                 noteEl.className = 'alert alert-warning py-2';
             } else {
-                noteEl.innerHTML = `<strong><i class="bi bi-info-circle"></i> First Aid:</strong> ระบบจะบันทึกผลการประเมิน <b>"แยกตามรายชื่อครู"</b> (ครู 1 คน ต่อ 1 สิทธิ์การประเมิน)`;
+                noteEl.innerHTML = `<strong><i class="bi bi-info-circle"></i> First Aid:</strong> ระบบจะบันทึกผลการประเมินคาบ ${period} <b>"แยกตามรายชื่อครู"</b> (ครู 1 คน ต่อ 1 สิทธิ์การประเมิน)`;
                 noteEl.className = 'alert alert-info py-2';
             }
 
@@ -231,9 +237,11 @@
                     return;
                 }
 
+                // ดึงข้อมูลเดิมมาแสดง (โดยต้องเพิ่มเงื่อนไข period ลงไป)
                 let query = client.from('daily_attendance')
                     .select('student_id, status, recorded_by')
                     .eq('check_date', date)
+                    .eq('period', period) // กรองคาบเรียน KM/KE
                     .eq('module_type', 'special_activity')
                     .eq('target_group', house)
                     .eq('subject_name', activity);
@@ -284,12 +292,15 @@
 
         async function saveToDatabase() {
             const date = document.getElementById('checkDate').value;
+            const period = document.getElementById('periodSelect').value; // เอาค่าคาบเวลามา
             const activity = document.getElementById('activitySelect').value;
             const house = document.getElementById('houseSelect').value;
             const teacher = document.getElementById('teacherSelect').value;
             
+            // เตรียมข้อมูลที่มัดรวม period ส่งไปด้วย
             const payload = masterStudents.map(s => ({
                 check_date: date, 
+                period: period,                  // บันทึก KM หรือ KE ลงฐานข้อมูล
                 module_type: 'special_activity', 
                 subject_name: activity,          
                 student_id: s.student_id,
@@ -301,8 +312,10 @@
             Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
             
             try {
+                // เพิ่มเงื่อนไข .eq('period', period) เพื่อป้องกันการลบข้ามช่วงเวลา
                 let deleteQuery = client.from('daily_attendance').delete()
                     .eq('check_date', date)
+                    .eq('period', period) // ลบเฉพาะข้อมูลในคาบเวลาที่เลือก
                     .eq('module_type', 'special_activity')
                     .eq('target_group', house)
                     .eq('subject_name', activity);

@@ -14,7 +14,6 @@
 
     <style>
         body { font-family: 'Sarabun', sans-serif; background-color: #f0f4f8; }
-        /* เปลี่ยนโทนสีเป็น น้ำเงิน-คราม */
         .header-banner { background: linear-gradient(135deg, #1565c0, #0d47a1); color: white; padding: 30px 0; border-radius: 0 0 25px 25px; margin-bottom: 30px; }
         .filter-card { background: white; border-radius: 15px; border: none; box-shadow: 0 4px 12px rgba(13, 71, 161, 0.1); padding: 25px; }
         .student-card { background: white; border-radius: 15px; border: none; box-shadow: 0 4px 12px rgba(13, 71, 161, 0.1); padding: 20px; }
@@ -25,7 +24,6 @@
             cursor: pointer; width: 100%; text-align: center; font-size: 0.9rem; font-weight: 600;
             transition: all 0.2s;
         }
-        /* เปลี่ยนสีสถานะให้เข้ากับบริบทกิจกรรม */
         .status-options input[value="pass"]:checked + label { background: #d1e7dd; color: #0f5132; border-color: #a3cfbb; }
         .status-options input[value="fail"]:checked + label { background: #f8d7da; color: #842029; border-color: #f1aeb5; }
         .status-options input[value="none"]:checked + label { background: #e2e3e5; color: #41464b; border-color: #c4c8cb; }
@@ -63,7 +61,8 @@
                 </div>
                 <div class="col-md-2">
                     <label class="form-label fw-bold">บ้าน (House)</label>
-                    <select id="houseSelect" class="form-select form-select-lg">
+                    <!-- เพิ่ม onchange เพื่อกรองครูทันทีที่เปลี่ยนบ้าน -->
+                    <select id="houseSelect" class="form-select form-select-lg" onchange="filterTeachersByHouse()">
                         <option value="">-- เลือกบ้าน --</option>
                         <option value="บ้าน1">บ้าน 1</option>
                         <option value="บ้าน2">บ้าน 2</option>
@@ -80,7 +79,7 @@
                 <div class="col-md-4">
                     <label class="form-label fw-bold text-theme">ครูผู้ประเมิน</label>
                     <select id="teacherSelect" class="form-select form-select-lg">
-                        <option value="">-- กำลังโหลดรายชื่อครู --</option>
+                        <option value="">-- กรุณาเลือกบ้านก่อน --</option>
                     </select>
                 </div>
                 <div class="col-md-12 d-flex align-items-end mt-4">
@@ -100,7 +99,7 @@
             </div>
 
             <div class="alert alert-info py-2" id="activityNote">
-                <!-- ข้อความแนะนำจะถูกแทรกที่นี่ด้วย JS ตามกิจกรรมที่เลือก -->
+                <!-- ข้อความแนะนำจะถูกแทรกที่นี่ด้วย JS -->
             </div>
 
             <div class="student-card">
@@ -122,32 +121,61 @@
     </div>
 
     <script>
-        // Supabase Initialization (ใช้ Key เดิมจากตัวอย่าง)
+        // Supabase Initialization
         const SUPABASE_URL = 'https://pqkaqsxmbewilzruogdw.supabase.co'; 
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxa2Fxc3htYmV3aWx6cnVvZ2R3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0ODgzMTksImV4cCI6MjA4NDA2NDMxOX0.TFyfNcFXcUUF29Iexmkjf6EaNIXAv8KuOFY_ydAY_z8'; 
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let masterStudents = [];
+        let masterTeachers = []; // เพิ่มตัวแปรเก็บข้อมูลครูทั้งหมด
 
         document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('checkDate').valueAsDate = new Date();
             await loadTeacherData();
         });
 
-        // โหลดรายชื่อครูทั้งหมด (ไม่ผูกกับหัวข้อเหมือนอันเก่า)
+        // โหลดรายชื่อครูและ "บ้าน" ของครูมาเก็บไว้
         async function loadTeacherData() {
             try {
-                const { data, error } = await client.from('teachers').select('fullname').range(0, 9999);
+                // สมมติว่าในตาราง teachers มีคอลัมน์ house
+                const { data, error } = await client.from('teachers').select('fullname, house').range(0, 9999);
                 if (error) throw error;
                 
-                const teacherDropdown = document.getElementById('teacherSelect');
-                teacherDropdown.innerHTML = '<option value="">-- เลือกครูผู้ประเมิน --</option>';
-                
-                const uniqueTeachers = [...new Set(data.map(t => t.fullname ? t.fullname.trim() : ''))].filter(t => t !== '');
+                // จัดระเบียบข้อมูลครู และล้างช่องว่างของชื่อบ้านเพื่อป้องกันความผิดพลาดตอนค้นหา
+                masterTeachers = data.map(t => ({
+                    fullname: t.fullname ? t.fullname.trim() : '',
+                    house: t.house ? String(t.house).replace(/\s+/g, '').toUpperCase() : ''
+                })).filter(t => t.fullname !== '');
+
+            } catch (err) { console.error("Error loading teachers:", err); }
+        }
+
+        // ฟังก์ชันสำหรับกรองครูเมื่อเลือก "บ้าน"
+        function filterTeachersByHouse() {
+            const selectedHouse = document.getElementById('houseSelect').value;
+            const teacherDropdown = document.getElementById('teacherSelect');
+
+            if (!selectedHouse) {
+                teacherDropdown.innerHTML = '<option value="">-- กรุณาเลือกบ้านก่อน --</option>';
+                return;
+            }
+
+            const safeSelectedHouse = selectedHouse.replace(/\s+/g, '').toUpperCase();
+            
+            // กรองหาครูที่มี house ตรงกับที่เลือก
+            const filteredTeachers = masterTeachers.filter(t => t.house === safeSelectedHouse);
+            
+            teacherDropdown.innerHTML = '<option value="">-- เลือกครูผู้ประเมิน --</option>';
+
+            const uniqueTeachers = [...new Set(filteredTeachers.map(t => t.fullname))];
+            
+            if (uniqueTeachers.length === 0) {
+                teacherDropdown.innerHTML = '<option value="">-- ไม่พบรายชื่อครูในบ้านนี้ --</option>';
+            } else {
                 uniqueTeachers.sort((a, b) => a.localeCompare(b, 'th')).forEach(t => {
                     teacherDropdown.innerHTML += `<option value="${t}">${t}</option>`;
                 });
-            } catch (err) { console.error(err); }
+            }
         }
 
         async function fetchStudentData() {
@@ -161,13 +189,12 @@
                 return;
             }
 
-            // แสดงข้อความแนะนำตามกิจกรรม
             const noteEl = document.getElementById('activityNote');
             if(activity === 'School Lockdown') {
                 noteEl.innerHTML = `<strong><i class="bi bi-info-circle"></i> School Lockdown:</strong> ใครเช็คก็ได้ ระบบจะบันทึก <b>"ผลลัพธ์ล่าสุด"</b> ของบ้านนี้ทับข้อมูลเดิม`;
                 noteEl.className = 'alert alert-warning py-2';
             } else {
-                noteEl.innerHTML = `<strong><i class="bi bi-info-circle"></i> First Aid:</strong> ระบบจะบันทึกผลการประเมิน <b>"แยกตามรายชื่อครู"</b> (ครู 1 คน ต่อ 1 สิทธิ์การประเมิน) เพื่อนำไปประมวลผลเกณฑ์ผ่าน 60% ต่อไป`;
+                noteEl.innerHTML = `<strong><i class="bi bi-info-circle"></i> First Aid:</strong> ระบบจะบันทึกผลการประเมิน <b>"แยกตามรายชื่อครู"</b> (ครู 1 คน ต่อ 1 สิทธิ์การประเมิน)`;
                 noteEl.className = 'alert alert-info py-2';
             }
 
@@ -179,7 +206,6 @@
                 let fetchStart = 0;
                 let keepFetching = true;
 
-                // ดึงรายชื่อนักเรียน
                 while (keepFetching) {
                     const { data: records, error: err1 } = await client
                         .from('students')
@@ -205,7 +231,6 @@
                     return;
                 }
 
-                // การดึงประวัติมาแสดง (แยก Logic ตามกิจกรรม)
                 let query = client.from('daily_attendance')
                     .select('student_id, status, recorded_by')
                     .eq('check_date', date)
@@ -213,7 +238,6 @@
                     .eq('target_group', house)
                     .eq('subject_name', activity);
 
-                // ถ้าเป็น First Aid ให้โหลดเฉพาะข้อมูลที่ครูคนนี้เคยเช็คไว้มาแสดง
                 if (activity === 'First Aid') {
                     query = query.eq('recorded_by', teacher);
                 }
@@ -222,7 +246,6 @@
                 if (err2) throw err2;
 
                 const historyMap = {};
-                // ตั้งค่าเริ่มต้นเป็น none (ไม่เข้าร่วม/ยังไม่ประเมิน) แทน present
                 history.forEach(h => historyMap[h.student_id] = h.status);
 
                 masterStudents = students;
@@ -267,8 +290,8 @@
             
             const payload = masterStudents.map(s => ({
                 check_date: date, 
-                module_type: 'special_activity', // แยก Module เพื่อไม่ปนกับระบบเช็คชื่อปกติ
-                subject_name: activity,          // เก็บชื่อกิจกรรม
+                module_type: 'special_activity', 
+                subject_name: activity,          
                 student_id: s.student_id,
                 status: document.querySelector(`input[name="st_${s.student_id}"]:checked`).value,
                 target_group: house, 
@@ -278,22 +301,18 @@
             Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
             
             try {
-                // *** LOGIC การลบข้อมูลเก่าก่อนบันทึกทับ (สำคัญมาก) ***
                 let deleteQuery = client.from('daily_attendance').delete()
                     .eq('check_date', date)
                     .eq('module_type', 'special_activity')
                     .eq('target_group', house)
                     .eq('subject_name', activity);
 
-                // ถ้าเป็นกิจกรรมที่ 2 (First Aid) ให้ลบเฉพาะข้อมูลของครูคนนี้ (อนุญาตให้ครูคนอื่นบันทึกของตัวเองได้)
-                // ถ้าเป็น School Lockdown ไม่ต้องเพิ่มเงื่อนไขนี้ (แปลว่าจะลบของทุกคนทิ้ง และเก็บผลของคนล่าสุดที่กดบันทึกแทน)
                 if (activity === 'First Aid') {
                     deleteQuery = deleteQuery.eq('recorded_by', teacher);
                 }
 
                 await deleteQuery;
 
-                // บันทึกข้อมูลใหม่
                 const { error } = await client.from('daily_attendance').insert(payload);
                 if (error) throw error;
                 

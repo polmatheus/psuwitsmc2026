@@ -55,19 +55,19 @@
                     <input type="text" id="inpLastName" class="form-control form-control-lg" placeholder="กรอกนามสกุล">
                 </div>
                 <div class="col-md-12">
-                    <label class="form-label fw-bold">บ้าน (House) <span class="text-danger">*</span></label>
+                    <label class="form-label fw-bold">กลุ่ม (Group) <span class="text-danger">*</span></label>
                     <select id="inpHouse" class="form-select form-select-lg">
-                        <option value="">-- เลือกบ้าน --</option>
-                        <option value="บ้าน1">บ้าน 1</option>
-                        <option value="บ้าน2">บ้าน 2</option>
-                        <option value="บ้าน3">บ้าน 3</option>
-                        <option value="บ้าน4">บ้าน 4</option>
-                        <option value="บ้าน5">บ้าน 5</option>
-                        <option value="บ้าน6">บ้าน 6</option>
-                        <option value="บ้าน7">บ้าน 7</option>
-                        <option value="บ้าน8">บ้าน 8</option>
-                        <option value="บ้าน9">บ้าน 9</option>
-                        <option value="บ้าน10">บ้าน 10</option>
+                        <option value="">-- เลือกกลุ่ม --</option>
+                        <option value="1">กลุ่ม 1</option>
+                        <option value="2">กลุ่ม 2</option>
+                        <option value="3">กลุ่ม 3</option>
+                        <option value="4">กลุ่ม 4</option>
+                        <option value="5">กลุ่ม 5</option>
+                        <option value="6">กลุ่ม 6</option>
+                        <option value="7">กลุ่ม 7</option>
+                        <option value="8">กลุ่ม 8</option>
+                        <option value="9">กลุ่ม 9</option>
+                        <option value="10">กลุ่ม 10</option>
                     </select>
                 </div>
                 <div class="col-12 mt-4">
@@ -80,7 +80,6 @@
 
         <div id="certContainer" class="cert-container">
             <h3 class="fw-bold text-success mb-3"><i class="bi bi-check-circle-fill"></i> ยินดีด้วย! คุณผ่านเกณฑ์การประเมิน</h3>
-            <!-- ขยายขนาด Canvas ให้เป็นแนวนอนสวยๆ สัดส่วนเกียรติบัตรมาตรฐาน -->
             <canvas id="certCanvas" width="1200" height="850"></canvas>
             <div class="mt-4">
                 <button onclick="downloadCertificate()" class="btn btn-lg btn-success fw-bold px-5 rounded-pill shadow">
@@ -99,10 +98,10 @@
             const prefix = document.getElementById('inpPrefix').value.trim();
             const firstName = document.getElementById('inpFirstName').value.trim();
             const lastName = document.getElementById('inpLastName').value.trim();
-            const house = document.getElementById('inpHouse').value;
+            const groupValue = document.getElementById('inpHouse').value;
 
-            if (!firstName || !lastName || !house) {
-                Swal.fire('ข้อมูลไม่ครบ', 'กรุณากรอกชื่อ นามสกุล และเลือกบ้านให้ครบถ้วน', 'warning');
+            if (!firstName || !lastName || !groupValue) {
+                Swal.fire('ข้อมูลไม่ครบ', 'กรุณากรอกชื่อ นามสกุล และเลือกกลุ่มให้ครบถ้วน', 'warning');
                 return;
             }
 
@@ -112,34 +111,35 @@
             Swal.fire({ title: 'กำลังตรวจสอบข้อมูล...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
             try {
+                // **หมายเหตุ:** ถ้าคุณแยกตาราง ม.1 ออกมา ให้แก้ students เป็น students_m1
                 const { data: students, error: err1 } = await client
                     .from('students')
-                    .select('student_id, fullname, house');
+                    .select('id, student_id, fullname, student_group');
                 
                 if (err1) throw err1;
 
-                const safeHouse = house.replace(/\s+/g, '').toUpperCase();
                 const matchedStudent = students.find(s => {
-                    if (!s.fullname || !s.house) return false;
-                    const dbHouse = String(s.house).replace(/\s+/g, '').toUpperCase();
-                    if (dbHouse !== safeHouse) return false;
+                    if (!s.fullname || !s.student_group) return false;
+                    const dbGroup = String(s.student_group).trim();
+                    if (dbGroup !== groupValue) return false;
 
                     const dbName = s.fullname.replace(/\s+/g, '');
                     return dbName.includes(searchNameNoPrefix) || dbName === searchName;
                 });
 
                 if (!matchedStudent) {
-                    Swal.fire('ไม่พบรายชื่อ', 'ไม่พบรายชื่อนักเรียนนี้ในบ้านที่เลือก (โปรดตรวจสอบการสะกดชื่อ-สกุล)', 'error');
+                    Swal.fire('ไม่พบรายชื่อ', 'ไม่พบรายชื่อนักเรียนนี้ในกลุ่มที่เลือก (โปรดตรวจสอบการสะกดชื่อ-สกุล)', 'error');
                     return;
                 }
 
-                const studentId = matchedStudent.student_id;
+                const studentIdForSearch = matchedStudent.id || matchedStudent.student_id || matchedStudent.fullname;
                 const fullnameDb = matchedStudent.fullname;
 
+                // **หมายเหตุ:** ถ้าคุณแยกตาราง ม.1 ออกมา ให้แก้ daily_attendance เป็น daily_attendance_m1
                 const { data: attendance, error: err2 } = await client
                     .from('daily_attendance')
                     .select('subject_name, status')
-                    .eq('student_id', studentId)
+                    .eq('student_id', String(studentIdForSearch))
                     .eq('module_type', 'special_activity');
 
                 if (err2) throw err2;
@@ -167,7 +167,7 @@
                 if (isLockdownPass && isFirstAidPass) {
                     Swal.close();
                     document.fonts.ready.then(() => {
-                        drawCertificate(fullnameDb, house);
+                        drawCertificate(fullnameDb, groupValue);
                     });
                 } else {
                     let failReason = `<ul class="text-start mt-3" style="font-size: 1.1rem;">`;
@@ -188,43 +188,42 @@
             }
         }
 
-        function drawCertificate(fullName, house) {
+        function drawCertificate(fullName, groupValue) {
             const canvas = document.getElementById('certCanvas');
             const ctx = canvas.getContext('2d');
             
-            // สร้าง Image Object เพื่อโหลดโลโก้
             const logoImage = new Image();
-            logoImage.crossOrigin = "Anonymous"; // ป้องกันปัญหา CORS ตอนโหลดรูป
-            logoImage.src = "https://img2.pic.in.th/pic/PSUWIT_Circle.png";
+            logoImage.crossOrigin = "Anonymous"; 
+            
+            // ✅ เปลี่ยนมาใช้ Image Proxy (wsrv.nl) เพื่อแก้ปัญหา CORS ชะงัก
+            logoImage.src = "https://wsrv.nl/?url=https://img2.pic.in.th/pic/PSUWIT_Circle.png";
 
             logoImage.onload = function() {
-                // ล้างหน้าจอ
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
                 // สีพื้นหลังขาว
                 ctx.fillStyle = "#ffffff";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 
-                // วาดกรอบนอก (เส้นหนาสีทอง)
+                // กรอบนอก (เส้นหนาสีทอง)
                 ctx.strokeStyle = "#c5a059"; 
                 ctx.lineWidth = 12;
                 ctx.strokeRect(30, 30, canvas.width - 60, canvas.height - 60);
                 
-                // วาดกรอบใน (เส้นบางสีทอง)
+                // กรอบใน (เส้นบางสีทอง)
                 ctx.lineWidth = 2;
                 ctx.strokeRect(50, 50, canvas.width - 100, canvas.height - 100);
 
                 // --- มุมขวาบน : เลขที่เกียรติบัตร ---
-                // สุ่มเลขจำลอง (คุณสามารถเปลี่ยนไปดึงจากฐานข้อมูลได้ในอนาคต)
                 const randomCertNo = Math.floor(Math.random() * 300) + 1; 
-                const certNoString = String(randomCertNo).padStart(3, '0'); // ทำให้เป็น 3 หลัก เช่น 005, 042
+                const certNoString = String(randomCertNo).padStart(3, '0');
 
                 ctx.fillStyle = "#333333";
                 ctx.font = "20px 'Sarabun'";
                 ctx.textAlign = "right";
                 ctx.fillText(`เลขที่เกียรติบัตร มอ.ว ใบที่ ${certNoString}/300`, canvas.width - 65, 85);
 
-                // --- โลโก้ตรงกลางด้านบน ---
+                // --- โลโก้ ---
                 const logoSize = 130;
                 const logoX = (canvas.width / 2) - (logoSize / 2);
                 ctx.drawImage(logoImage, logoX, 70, logoSize, logoSize);
@@ -240,7 +239,7 @@
                 ctx.fillText("มอบเกียรติบัตรฉบับนี้ให้ไว้เพื่อแสดงว่า", canvas.width / 2, 320);
 
                 // --- ชื่อนักเรียน ---
-                ctx.fillStyle = "#1565c0"; // สีน้ำเงิน
+                ctx.fillStyle = "#1565c0"; 
                 ctx.font = "bold 65px 'Sarabun'";
                 ctx.fillText(fullName, canvas.width / 2, 420);
 
@@ -250,7 +249,7 @@
                 ctx.fillText("ได้ผ่านการเข้าร่วมและผ่านเกณฑ์การประเมินกิจกรรมพิเศษ", canvas.width / 2, 500);
                 ctx.fillText("กิจกรรม School Lockdown และ First Aid (ปฐมพยาบาล)", canvas.width / 2, 545);
                 
-                // --- วันที่ (รูปแบบทางการ) ---
+                // --- วันที่ ---
                 const today = new Date();
                 const thaiMonths = [
                     "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", 
@@ -276,14 +275,12 @@
                 ctx.fillText("(...................................................)", rightX, 760);
                 ctx.fillText("ตำแหน่งผู้เซ็นคนที่ 2", rightX, 790);
                 
-                // แสดงพื้นที่ Canvas 
                 document.getElementById('certContainer').style.display = 'block';
                 document.getElementById('certContainer').scrollIntoView({ behavior: 'smooth' });
             };
             
-            // กรณีโหลดรูปภาพโลโก้ไม่สำเร็จ
             logoImage.onerror = function() {
-                Swal.fire('คำเตือน', 'ไม่สามารถโหลดรูปโลโก้ได้ (อาจติดปัญหาข้ามโดเมน CORS)', 'warning');
+                Swal.fire('คำเตือน', 'ไม่สามารถโหลดรูปลงเกียรติบัตรได้', 'warning');
             };
         }
 

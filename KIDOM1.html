@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบประเมินกิจกรรมครูKIDO (ม.1)</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background-color: #f0f4f8; }
+        .header-banner { background: linear-gradient(135deg, #1565c0, #0d47a1); color: white; padding: 30px 0; border-radius: 0 0 25px 25px; margin-bottom: 30px; }
+        .filter-card { background: white; border-radius: 15px; border: none; box-shadow: 0 4px 12px rgba(13, 71, 161, 0.1); padding: 25px; }
+        .student-card { background: white; border-radius: 15px; border: none; box-shadow: 0 4px 12px rgba(13, 71, 161, 0.1); padding: 20px; }
+        
+        .status-options input[type="radio"] { display: none; }
+        .status-options label { 
+            padding: 8px; border: 1px solid #dee2e6; border-radius: 8px; 
+            cursor: pointer; width: 100%; text-align: center; font-size: 0.9rem; font-weight: 600;
+            transition: all 0.2s;
+        }
+        .status-options input[value="pass"]:checked + label { background: #d1e7dd; color: #0f5132; border-color: #a3cfbb; }
+        .status-options input[value="fail"]:checked + label { background: #f8d7da; color: #842029; border-color: #f1aeb5; }
+        .status-options input[value="none"]:checked + label { background: #e2e3e5; color: #41464b; border-color: #c4c8cb; }
+
+        .sticky-header { position: sticky; top: 0; background: white; z-index: 100; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .text-theme { color: #1565c0; }
+        .bg-theme { background-color: #1565c0; }
+        .bg-theme:hover { background-color: #0d47a1; color: white; }
+    </style>
+</head>
+<body>
+    <div class="header-banner text-center shadow">
+        <div class="container">
+            <h2 class="fw-bold"><i class="bi bi-shield-check"></i> ระบบประเมินกิจกรรมครูKIDO (ม.1)</h2>
+            <p class="mb-0 text-light">School Lockdown & First Aid</p>
+        </div>
+    </div>
+
+    <div class="container pb-5">
+        
+        <div class="filter-card mb-4">
+            <div class="row g-3">
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">วันที่จัดกิจกรรม</label>
+                    <input type="date" id="checkDate" class="form-control form-control-lg">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">ช่วงเวลา</label>
+                    <select id="periodSelect" class="form-select form-select-lg">
+                        <option value="">-- เลือกช่วง --</option>
+                        <option value="KM">ช่วงเช้า </option>
+                        <option value="KE">ช่วงบ่าย </option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold text-theme">เลือก กิจกรรม</label>
+                    <select id="activitySelect" class="form-select form-select-lg">
+                        <option value="">-- เลือกกิจกรรม --</option>
+                        <option value="School Lockdown">School Lockdown</option>
+                        <option value="First Aid">First Aid (ปฐมพยาบาล)</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">กลุ่ม</label>
+                    <select id="groupSelect" class="form-select form-select-lg" onchange="filterTeachersByGroup()">
+                        <option value="">-- เลือกกลุ่ม --</option>
+                        <option value="1">กลุ่ม 1</option>
+                        <option value="2">กลุ่ม 2</option>
+                        <option value="3">กลุ่ม 3</option>
+                        <option value="4">กลุ่ม 4</option>
+                        <option value="5">กลุ่ม 5</option>
+                        <option value="6">กลุ่ม 6</option>
+                        <option value="7">กลุ่ม 7</option>
+                        <option value="8">กลุ่ม 8</option>
+                        <option value="9">กลุ่ม 9</option>
+                        <option value="10">กลุ่ม 10</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold text-theme">ครูผู้ประเมิน</label>
+                    <select id="teacherSelect" class="form-select form-select-lg">
+                        <option value="">-- กรุณาเลือกกลุ่มก่อน --</option>
+                    </select>
+                </div>
+                <div class="col-md-12 d-flex align-items-end mt-3">
+                    <button onclick="fetchStudentData()" class="btn btn-lg w-100 fw-bold text-white shadow-sm bg-theme">
+                        <i class="bi bi-search"></i> ค้นหารายชื่อนักเรียน
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="attendanceArea" style="display: none;">
+            <div class="sticky-header d-flex justify-content-between align-items-center mb-3">
+                <h4 class="fw-bold m-0 text-theme" id="listTitle">รายชื่อนักเรียน</h4>
+                <button onclick="saveToDatabase()" class="btn btn-lg px-5 fw-bold rounded-pill shadow text-white bg-theme">
+                    <i class="bi bi-save2-fill"></i> บันทึกผลประเมิน
+                </button>
+            </div>
+
+            <div class="alert alert-info py-2" id="activityNote"></div>
+
+            <div class="student-card">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr class="text-center">
+                                <th width="10%">ลำดับ</th>
+                                <th width="40%" class="text-start">ชื่อ-นามสกุล</th>
+                                <th width="50%">ผลการประเมิน</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentTbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://pqkaqsxmbewilzruogdw.supabase.co'; 
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxa2Fxc3htYmV3aWx6cnVvZ2R3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0ODgzMTksImV4cCI6MjA4NDA2NDMxOX0.TFyfNcFXcUUF29Iexmkjf6EaNIXAv8KuOFY_ydAY_z8'; 
+        const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let masterStudents = [];
+        let masterTeachers = []; 
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            document.getElementById('checkDate').valueAsDate = new Date();
+            await loadTeacherData();
+        });
+
+        // โหลดข้อมูลครูจาก teachers_m1
+        async function loadTeacherData() {
+            try {
+                const { data, error } = await client.from('teachers_m1').select('fullname, teacher_group').range(0, 9999);
+                if (error) throw error;
+                
+                masterTeachers = data.map(t => ({
+                    fullname: t.fullname ? t.fullname.trim() : '',
+                    group: t.teacher_group ? String(t.teacher_group).trim() : '' 
+                })).filter(t => t.fullname !== '');
+
+            } catch (err) { console.error("Error loading teachers:", err); }
+        }
+
+        function filterTeachersByGroup() {
+            const selectedGroup = document.getElementById('groupSelect').value; 
+            const teacherDropdown = document.getElementById('teacherSelect');
+
+            if (!selectedGroup) {
+                teacherDropdown.innerHTML = '<option value="">-- กรุณาเลือกกลุ่มก่อน --</option>';
+                return;
+            }
+
+            const filteredTeachers = masterTeachers.filter(t => t.group === selectedGroup);
+            teacherDropdown.innerHTML = '<option value="">-- เลือกครูผู้ประเมิน --</option>';
+
+            const uniqueTeachers = [...new Set(filteredTeachers.map(t => t.fullname))];
+            
+            if (uniqueTeachers.length === 0) {
+                teacherDropdown.innerHTML = '<option value="">-- ไม่พบรายชื่อครูในกลุ่มนี้ --</option>';
+            } else {
+                uniqueTeachers.sort((a, b) => a.localeCompare(b, 'th')).forEach(t => {
+                    teacherDropdown.innerHTML += `<option value="${t}">${t}</option>`;
+                });
+            }
+        }
+
+        async function fetchStudentData() {
+            const date = document.getElementById('checkDate').value;
+            const period = document.getElementById('periodSelect').value; 
+            const activity = document.getElementById('activitySelect').value;
+            const groupValue = document.getElementById('groupSelect').value; 
+            const teacher = document.getElementById('teacherSelect').value;
+
+            if (!date || !period || !activity || !groupValue || !teacher) {
+                Swal.fire('ข้อมูลไม่ครบ', 'กรุณาเลือกวันที่ ช่วงเวลา กิจกรรม กลุ่ม และครูให้ครบถ้วน', 'warning');
+                return;
+            }
+
+            const noteEl = document.getElementById('activityNote');
+            if(activity === 'School Lockdown') {
+                noteEl.innerHTML = `<strong><i class="bi bi-info-circle"></i> School Lockdown:</strong> ระบบจะบันทึก <b>"ผลลัพธ์ล่าสุด"</b> ของกลุ่มนี้ทับข้อมูลเดิมในคาบเรียน ${period}`;
+                noteEl.className = 'alert alert-warning py-2';
+            } else {
+                noteEl.innerHTML = `<strong><i class="bi bi-info-circle"></i> First Aid:</strong> ระบบจะบันทึกผลการประเมินคาบ ${period} <b>"แยกตามรายชื่อครู"</b>`;
+                noteEl.className = 'alert alert-info py-2';
+            }
+
+            Swal.fire({ title: 'กำลังโหลดข้อมูล...', didOpen: () => Swal.showLoading() });
+
+            try {
+                let allStudents = [];
+                let fetchStart = 0;
+                let keepFetching = true;
+
+                // ดึงข้อมูลเด็กจาก students_m1
+                while (keepFetching) {
+                    const { data: records, error: err1 } = await client
+                        .from('students_m1') 
+                        .select('*')      
+                        .order('fullname', { ascending: true }) 
+                        .range(fetchStart, fetchStart + 999);
+
+                    if (err1) throw err1;
+                    if (records && records.length > 0) {
+                        allStudents.push(...records);
+                        fetchStart += records.length;
+                    }
+                    if (!records || records.length < 1000) keepFetching = false;
+                }
+
+                const students = allStudents.filter(s => {
+                    const dbGroup = String(s.student_group || '').trim();
+                    return dbGroup === groupValue;
+                });
+
+                if (students.length === 0) {
+                    Swal.fire('ไม่พบข้อมูล', 'ไม่มีรายชื่อนักเรียนในกลุ่มที่เลือก', 'warning');
+                    return;
+                }
+
+                // ดึงประวัติจาก daily_attendance_m1
+                let query = client.from('daily_attendance_m1')
+                    .select('student_id, status, recorded_by')
+                    .eq('check_date', date)
+                    .eq('period', period) 
+                    .eq('module_type', 'special_activity')
+                    .eq('target_group', groupValue) 
+                    .eq('subject_name', activity);
+
+                if (activity === 'First Aid') {
+                    query = query.eq('recorded_by', teacher);
+                }
+
+                const { data: history, error: err2 } = await query;
+                if (err2) throw err2;
+
+                const historyMap = {};
+                history.forEach(h => historyMap[h.student_id] = h.status);
+
+                masterStudents = students;
+                renderStudentTable(students, historyMap);
+                
+                document.getElementById('attendanceArea').style.display = 'block';
+                document.getElementById('listTitle').innerText = `รายชื่อกลุ่ม ${groupValue} (${activity}) - ${students.length} คน`;
+                Swal.close();
+
+            } catch (e) {
+                console.error(e);
+                Swal.fire('เกิดข้อผิดพลาด', e.message || 'ไม่สามารถดึงข้อมูลได้', 'error');
+            }
+        }
+
+        function renderStudentTable(students, historyMap) {
+            const tbody = document.getElementById('studentTbody');
+            tbody.innerHTML = '';
+            
+            students.forEach((s, index) => {
+                const uid = s.id || s.student_id || s.fullname; 
+                const currentStatus = historyMap[uid] || 'none';
+                
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="text-center fw-bold text-secondary">${index + 1}</td>
+                        <td class="fw-bold">${s.fullname}</td>
+                        <td>
+                            <div class="row g-1 status-options">
+                                <div class="col-4"><input type="radio" name="st_${uid}" id="pass_${uid}" value="pass" ${currentStatus==='pass'?'checked':''}><label for="pass_${uid}"><i class="bi bi-check-circle"></i> ผ่าน</label></div>
+                                <div class="col-4"><input type="radio" name="st_${uid}" id="fail_${uid}" value="fail" ${currentStatus==='fail'?'checked':''}><label for="fail_${uid}"><i class="bi bi-x-circle"></i> ไม่ผ่าน</label></div>
+                                <div class="col-4"><input type="radio" name="st_${uid}" id="none_${uid}" value="none" ${currentStatus==='none'?'checked':''}><label for="none_${uid}">ไม่เข้าร่วม</label></div>
+                            </div>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        async function saveToDatabase() {
+            const date = document.getElementById('checkDate').value;
+            const period = document.getElementById('periodSelect').value; 
+            const activity = document.getElementById('activitySelect').value;
+            const groupValue = document.getElementById('groupSelect').value;
+            const teacher = document.getElementById('teacherSelect').value;
+            
+            const payload = masterStudents.map(s => {
+                const uid = s.id || s.student_id || s.fullname;
+                return {
+                    check_date: date, 
+                    period: period,                  
+                    module_type: 'special_activity', 
+                    subject_name: activity,          
+                    student_id: String(uid), 
+                    status: document.querySelector(`input[name="st_${uid}"]:checked`).value,
+                    target_group: groupValue, 
+                    recorded_by: teacher 
+                };
+            });
+            
+            Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            
+            try {
+                // ลบและบันทึกลง daily_attendance_m1
+                let deleteQuery = client.from('daily_attendance_m1').delete()
+                    .eq('check_date', date)
+                    .eq('period', period) 
+                    .eq('module_type', 'special_activity')
+                    .eq('target_group', groupValue)
+                    .eq('subject_name', activity);
+
+                if (activity === 'First Aid') {
+                    deleteQuery = deleteQuery.eq('recorded_by', teacher);
+                }
+
+                await deleteQuery;
+
+                const { error } = await client.from('daily_attendance_m1').insert(payload);
+                if (error) throw error;
+                
+                Swal.fire({ icon: 'success', title: 'บันทึกผลการประเมินเรียบร้อย', timer: 1500, showConfirmButton: false });
+            } catch (e) { 
+                console.error("Supabase Error:", e); 
+                Swal.fire('เกิดข้อผิดพลาด', `ไม่สามารถบันทึกข้อมูลได้: ${e.message || 'โปรดดูใน console'}`, 'error'); 
+            }
+        }
+    </script>
+</body>
+</html>

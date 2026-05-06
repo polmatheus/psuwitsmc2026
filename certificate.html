@@ -36,9 +36,16 @@
         <div class="form-card">
             <h4 class="fw-bold text-center text-theme mb-4">กรอกข้อมูลเพื่อตรวจสอบสิทธิ์</h4>
             <div class="row g-3">
+                <!-- เปลี่ยนเป็น Dropdown -->
                 <div class="col-md-3">
-                    <label class="form-label fw-bold">คำนำหน้า (ถ้ามี)</label>
-                    <input type="text" id="inpPrefix" class="form-control form-control-lg" placeholder="เช่น ด.ช., นางสาว">
+                    <label class="form-label fw-bold">คำนำหน้า</label>
+                    <select id="inpPrefix" class="form-select form-select-lg">
+                        <option value="">-- ไม่ระบุ --</option>
+                        <option value="ด.ช.">ด.ช.</option>
+                        <option value="ด.ญ.">ด.ญ.</option>
+                        <option value="นาย">นาย</option>
+                        <option value="นางสาว">นางสาว</option>
+                    </select>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label fw-bold">ชื่อ <span class="text-danger">*</span></label>
@@ -96,7 +103,7 @@
             const house = document.getElementById('inpHouse').value;
 
             if (!firstName || !lastName || !house) {
-                Swal.fire('ข้อมูลไม่ครบ', 'กรุณากรอกชื่อ นามสกุล และเลือกบ้าน', 'warning');
+                Swal.fire('ข้อมูลไม่ครบ', 'กรุณากรอกชื่อ นามสกุล และเลือกบ้านให้ครบถ้วน', 'warning');
                 return;
             }
 
@@ -174,7 +181,7 @@
                         drawCertificate(fullnameDb, house);
                     });
                 } else {
-                    let failReason = `<ul class="text-start mt-3">`;
+                    let failReason = `<ul class="text-start mt-3" style="font-size: 1.1rem;">`;
                     if (!isLockdownPass) failReason += `<li><b>School Lockdown:</b> ไม่ผ่าน หรือ ไม่เข้าร่วม</li>`;
                     if (!isFirstAidPass) failReason += `<li><b>First Aid:</b> ไม่ผ่านเกณฑ์ (${firstAidMessage})</li>`;
                     failReason += `</ul>`;

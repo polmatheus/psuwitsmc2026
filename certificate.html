@@ -55,19 +55,19 @@
                     <input type="text" id="inpLastName" class="form-control form-control-lg" placeholder="กรอกนามสกุล">
                 </div>
                 <div class="col-md-12">
-                    <label class="form-label fw-bold">กลุ่ม (Group) <span class="text-danger">*</span></label>
-                    <select id="inpHouse" class="form-select form-select-lg">
-                        <option value="">-- เลือกกลุ่ม --</option>
-                        <option value="1">กลุ่ม 1</option>
-                        <option value="2">กลุ่ม 2</option>
-                        <option value="3">กลุ่ม 3</option>
-                        <option value="4">กลุ่ม 4</option>
-                        <option value="5">กลุ่ม 5</option>
-                        <option value="6">กลุ่ม 6</option>
-                        <option value="7">กลุ่ม 7</option>
-                        <option value="8">กลุ่ม 8</option>
-                        <option value="9">กลุ่ม 9</option>
-                        <option value="10">กลุ่ม 10</option>
+                    <label class="form-label fw-bold">บ้าน (House)</label>
+                    <select id="houseSelect" class="form-select form-select-lg" onchange="filterTeachersByHouse()">
+                        <option value="">-- เลือกบ้าน --</option>
+                        <option value="บ้าน1">บ้าน 1</option>
+                        <option value="บ้าน2">บ้าน 2</option>
+                        <option value="บ้าน3">บ้าน 3</option>
+                        <option value="บ้าน4">บ้าน 4</option>
+                        <option value="บ้าน5">บ้าน 5</option>
+                        <option value="บ้าน6">บ้าน 6</option>
+                        <option value="บ้าน7">บ้าน 7</option>
+                        <option value="บ้าน8">บ้าน 8</option>
+                        <option value="บ้าน9">บ้าน 9</option>
+                        <option value="บ้าน10">บ้าน 10</option>
                     </select>
                 </div>
                 <div class="col-12 mt-4">

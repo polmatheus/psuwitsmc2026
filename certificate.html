@@ -225,7 +225,8 @@
                 ctx.strokeRect(42, 42, canvas.width - 84, canvas.height - 84);
 
                 // --- [ส่วนที่คงเดิม] รหัส ---
-                const formattedId = String(studentId).padStart(3, '0');
+                // แปลงเป็น Number ก่อนเพื่อตัด 0 ส่วนเกินออก แล้วค่อยบังคับให้มี 3 หลัก
+                const formattedId = String(Number(studentId)).padStart(3, '0');
                 ctx.fillStyle = "#1565c0";
                 ctx.font = "20px 'Sarabun'";
                 ctx.textAlign = "right";
@@ -242,27 +243,27 @@
                 ctx.fillStyle = "#0d47a1";
                 ctx.font = "28px 'Sarabun'"; // ปรับขนาดเท่ากัน
                 ctx.textAlign = "center";
-                ctx.fillText("เกียรติบัตรฉบับนี้ให้ไว้เพื่อแสดงว่า", canvas.width / 2, 200);
+                ctx.fillText("เกียรติบัตรฉบับนี้ให้ไว้เพื่อแสดงว่า", canvas.width / 2, 210);
 
                 // ชื่อนักเรียน (ขยับลงมาที่ y=340, ขนาด 30px **คง Boldไว้**)
                 ctx.fillStyle = "#d84315";
                 ctx.font = "bold 28px 'Sarabun'"; // ปรับขนาดเท่ากัน คง bold
-                ctx.fillText(fullName, canvas.width / 2, 250);
+                ctx.fillText(fullName, canvas.width / 2, 260);
                 
                 // คำอธิบาย (ขนาด 30px คงเดิม, ขยับลงมาที่ y=430)
                 ctx.fillStyle = "#000000";
                 ctx.font = "28px 'Sarabun'"; 
-                ctx.fillText("ได้ผ่านการเข้าร่วมและผ่านเกณฑ์การประเมินกิจกรรม", canvas.width / 2, 300);
+                ctx.fillText("ได้ผ่านการเข้าร่วมและผ่านเกณฑ์การประเมินกิจกรรม", canvas.width / 2, 320);
                 
                 // กิจกรรม (ขยับลงมาที่ y=490, ขนาด 30px **คง Boldไว้**)
                 ctx.fillStyle = "#1565c0";
                 ctx.font = "bold 28px 'Sarabun'"; // ปรับขนาดเท่ากัน คง bold
-                ctx.fillText("School Lockdown & First Aid", canvas.width / 2, 350);
+                ctx.fillText("School Lockdown & First Aid", canvas.width / 2, 360);
 
                 // บังคับวันที่ (ขยับลงมาที่ y=560, ขนาด 30px)
                 ctx.fillStyle = "#333333";
                 ctx.font = "28px 'Sarabun'"; // ปรับขนาดเท่ากัน
-                ctx.fillText("ให้ไว้ ณ วันที่ 6 พฤษภาคม พ.ศ. 2569", canvas.width / 2, 400);
+                ctx.fillText("ให้ไว้ ณ วันที่ 6 พฤษภาคม พ.ศ. 2569", canvas.width / 2, 420);
 
                 // ปรับขนาดลายเซ็นและความสูงให้สอดคล้องกับข้อความที่เลื่อนลง
                 const sigWidth = 80;

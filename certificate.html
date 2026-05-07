@@ -28,7 +28,7 @@
     <div class="header-banner text-center shadow">
         <div class="container">
             <h2 class="fw-bold"><i class="bi bi-award-fill"></i> ระบบตรวจสอบและออกเกียรติบัตร</h2>
-            <p class="mb-0 text-light">School Lockdown & First Aid (ม.4)</p>
+            <p class="mb-0 text-light">School Lockdown & First Aid</p>
         </div>
     </div>
 
@@ -36,6 +36,7 @@
         <div class="form-card">
             <h4 class="fw-bold text-center text-theme mb-4">กรอกข้อมูลเพื่อตรวจสอบสิทธิ์</h4>
             <div class="row g-3">
+                <!-- เปลี่ยนเป็น Dropdown -->
                 <div class="col-md-3">
                     <label class="form-label fw-bold">คำนำหน้า</label>
                     <select id="inpPrefix" class="form-select form-select-lg">
@@ -55,8 +56,8 @@
                     <input type="text" id="inpLastName" class="form-control form-control-lg" placeholder="กรอกนามสกุล">
                 </div>
                 <div class="col-md-12">
-                    <label class="form-label fw-bold">บ้าน (House)</label>
-                    <select id="houseSelect" class="form-select form-select-lg" onchange="filterTeachersByHouse()">
+                    <label class="form-label fw-bold">บ้าน (House) <span class="text-danger">*</span></label>
+                    <select id="inpHouse" class="form-select form-select-lg">
                         <option value="">-- เลือกบ้าน --</option>
                         <option value="บ้าน1">บ้าน 1</option>
                         <option value="บ้าน2">บ้าน 2</option>
@@ -78,9 +79,10 @@
             </div>
         </div>
 
+        <!-- พื้นที่แสดงเกียรติบัตร -->
         <div id="certContainer" class="cert-container">
             <h3 class="fw-bold text-success mb-3"><i class="bi bi-check-circle-fill"></i> ยินดีด้วย! คุณผ่านเกณฑ์การประเมิน</h3>
-            <canvas id="certCanvas" width="1200" height="850"></canvas>
+            <canvas id="certCanvas" width="1000" height="700"></canvas>
             <div class="mt-4">
                 <button onclick="downloadCertificate()" class="btn btn-lg btn-success fw-bold px-5 rounded-pill shadow">
                     <i class="bi bi-download"></i> ดาวน์โหลดเกียรติบัตร (PNG)
@@ -98,66 +100,64 @@
             const prefix = document.getElementById('inpPrefix').value.trim();
             const firstName = document.getElementById('inpFirstName').value.trim();
             const lastName = document.getElementById('inpLastName').value.trim();
-            const groupValue = document.getElementById('inpHouse').value;
+            const house = document.getElementById('inpHouse').value;
 
-            if (!firstName || !lastName || !groupValue) {
-                Swal.fire('ข้อมูลไม่ครบ', 'กรุณากรอกชื่อ นามสกุล และเลือกกลุ่มให้ครบถ้วน', 'warning');
+            if (!firstName || !lastName || !house) {
+                Swal.fire('ข้อมูลไม่ครบ', 'กรุณากรอกชื่อ นามสกุล และเลือกบ้านให้ครบถ้วน', 'warning');
                 return;
             }
 
+            // ตัดช่องว่างออกทั้งหมดเพื่อใช้เทียบ (ป้องกันปัญหาการเว้นวรรคไม่ตรงกัน)
             const searchName = (prefix + firstName + lastName).replace(/\s+/g, '');
             const searchNameNoPrefix = (firstName + lastName).replace(/\s+/g, '');
 
             Swal.fire({ title: 'กำลังตรวจสอบข้อมูล...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
             try {
-                // 🛑 เปลี่ยนเป็นตารางของเดิม (students) 
+                // 1. ค้นหาเด็กในบ้านที่เลือก
                 const { data: students, error: err1 } = await client
                     .from('students')
-                    .select('*');
+                    .select('student_id, fullname, house');
                 
-                if (err1) {
-                    console.error("Error fetching students:", err1);
-                    throw new Error("ไม่สามารถดึงข้อมูลนักเรียนได้ โปรดตรวจสอบตาราง students");
-                }
+                if (err1) throw err1;
 
+                // กรองหาเด็กที่ชื่อตรงกัน
+                const safeHouse = house.replace(/\s+/g, '').toUpperCase();
                 const matchedStudent = students.find(s => {
-                    // รองรับทั้งคอลัมน์ student_group และ house (เผื่อตารางเดิมใช้ชื่อไหน)
-                    const dbGroup = String(s.student_group || s.house || '').trim();
-                    if (!s.fullname || !dbGroup) return false;
-                    
-                    if (dbGroup !== groupValue && dbGroup !== `บ้าน${groupValue}`) return false;
+                    if (!s.fullname || !s.house) return false;
+                    const dbHouse = String(s.house).replace(/\s+/g, '').toUpperCase();
+                    if (dbHouse !== safeHouse) return false;
 
                     const dbName = s.fullname.replace(/\s+/g, '');
+                    // เช็คว่าชื่อใน DB มีคำที่เราค้นหาไหม
                     return dbName.includes(searchNameNoPrefix) || dbName === searchName;
                 });
 
                 if (!matchedStudent) {
-                    Swal.fire('ไม่พบรายชื่อ', 'ไม่พบรายชื่อนักเรียนนี้ในกลุ่มที่เลือก (โปรดตรวจสอบการสะกดชื่อ-สกุล)', 'error');
+                    Swal.fire('ไม่พบรายชื่อ', 'ไม่พบรายชื่อนักเรียนนี้ในบ้านที่เลือก (โปรดตรวจสอบการสะกดชื่อ-สกุล)', 'error');
                     return;
                 }
 
-                // รองรับทุกรูปแบบ ไม่ว่าฐานข้อมูลจะมี id, student_id หรือมีแค่ชื่อ
-                const studentIdForSearch = matchedStudent.id || matchedStudent.student_id || matchedStudent.fullname;
+                // 2. ตรวจสอบผลการเข้าร่วมกิจกรรม
+                const studentId = matchedStudent.student_id;
                 const fullnameDb = matchedStudent.fullname;
 
-                // 🛑 เปลี่ยนเป็นตารางของเดิม (daily_attendance)
                 const { data: attendance, error: err2 } = await client
                     .from('daily_attendance')
                     .select('subject_name, status')
-                    .eq('student_id', String(studentIdForSearch))
+                    .eq('student_id', studentId)
                     .eq('module_type', 'special_activity');
 
-                if (err2) {
-                    console.error("Error fetching attendance:", err2);
-                    throw new Error("ไม่สามารถดึงข้อมูลประวัติการเช็คชื่อได้ โปรดตรวจสอบตาราง daily_attendance");
-                }
+                if (err2) throw err2;
 
+                // แยกข้อมูลตามกิจกรรม
                 const lockdownRecords = attendance.filter(a => a.subject_name === 'School Lockdown');
                 const firstAidRecords = attendance.filter(a => a.subject_name === 'First Aid');
 
+                // เช็คเงื่อนไข School Lockdown (แค่มี pass อย่างน้อย 1 ครั้งถือว่าผ่าน)
                 const isLockdownPass = lockdownRecords.some(a => a.status === 'pass');
 
+                // เช็คเงื่อนไข First Aid (ต้องผ่าน >= 60% ของจำนวนครูที่ประเมิน)
                 let isFirstAidPass = false;
                 let firstAidMessage = "ยังไม่มีข้อมูลประเมิน";
 
@@ -173,10 +173,12 @@
                     }
                 }
 
+                // สรุปผล
                 if (isLockdownPass && isFirstAidPass) {
                     Swal.close();
+                    // โหลด Font ก่อนวาดรูป
                     document.fonts.ready.then(() => {
-                        drawCertificate(fullnameDb, groupValue);
+                        drawCertificate(fullnameDb, house);
                     });
                 } else {
                     let failReason = `<ul class="text-start mt-3" style="font-size: 1.1rem;">`;
@@ -192,99 +194,82 @@
                 }
 
             } catch (e) {
-                console.error("Caught Error:", e);
-                Swal.fire('เกิดข้อผิดพลาด', e.message || 'ไม่สามารถทำรายการได้', 'error');
+                console.error("Supabase Error:", e);
+                Swal.fire('เกิดข้อผิดพลาด', e.message || 'ไม่สามารถดึงข้อมูลจากระบบได้', 'error');
             }
         }
 
-        function drawCertificate(fullName, groupValue) {
+        function drawCertificate(fullName, house) {
             const canvas = document.getElementById('certCanvas');
             const ctx = canvas.getContext('2d');
             
-            const logoImage = new Image();
-            logoImage.crossOrigin = "Anonymous"; 
+            // ล้างหน้าจอ
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // ใช้ Image Proxy (wsrv.nl) เพื่อแก้ปัญหา CORS (โหลดรูปไม่ได้)
-            logoImage.src = "https://wsrv.nl/?url=https://img2.pic.in.th/pic/PSUWIT_Circle.png";
-
-            logoImage.onload = function() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                
-                ctx.fillStyle = "#ffffff";
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                
-                ctx.strokeStyle = "#c5a059"; 
-                ctx.lineWidth = 12;
-                ctx.strokeRect(30, 30, canvas.width - 60, canvas.height - 60);
-                
-                ctx.lineWidth = 2;
-                ctx.strokeRect(50, 50, canvas.width - 100, canvas.height - 100);
-
-                const randomCertNo = Math.floor(Math.random() * 300) + 1; 
-                const certNoString = String(randomCertNo).padStart(3, '0');
-
-                ctx.fillStyle = "#333333";
-                ctx.font = "20px 'Sarabun'";
-                ctx.textAlign = "right";
-                ctx.fillText(`เลขที่เกียรติบัตร มอ.ว ใบที่ ${certNoString}/300`, canvas.width - 65, 85);
-
-                const logoSize = 130;
-                const logoX = (canvas.width / 2) - (logoSize / 2);
-                ctx.drawImage(logoImage, logoX, 70, logoSize, logoSize);
-
-                ctx.textAlign = "center";
-                ctx.fillStyle = "#000000";
-                
-                ctx.font = "bold 38px 'Sarabun'";
-                ctx.fillText("โครงการ SMART WiTH care and share", canvas.width / 2, 260);
-                
-                ctx.font = "30px 'Sarabun'";
-                ctx.fillText("มอบเกียรติบัตรฉบับนี้ให้ไว้เพื่อแสดงว่า", canvas.width / 2, 320);
-
-                ctx.fillStyle = "#1565c0"; 
-                ctx.font = "bold 65px 'Sarabun'";
-                ctx.fillText(fullName, canvas.width / 2, 420);
-
-                ctx.fillStyle = "#000000";
-                ctx.font = "28px 'Sarabun'";
-                ctx.fillText("ได้ผ่านการเข้าร่วมและผ่านเกณฑ์การประเมินกิจกรรมพิเศษ", canvas.width / 2, 500);
-                ctx.fillText("กิจกรรม School Lockdown และ First Aid (ปฐมพยาบาล)", canvas.width / 2, 545);
-                
-                const today = new Date();
-                const thaiMonths = [
-                    "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", 
-                    "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
-                ];
-                const dateStr = `ให้ไว้ ณ วันที่ ${today.getDate()} ${thaiMonths[today.getMonth()]} พุทธศักราช ${today.getFullYear() + 543}`;
-                
-                ctx.font = "24px 'Sarabun'";
-                ctx.fillText(dateStr, canvas.width / 2, 620);
-
-                ctx.font = "22px 'Sarabun'";
-                
-                const leftX = canvas.width * 0.30;
-                ctx.fillText("ลงชื่อ...................................................", leftX, 720);
-                ctx.fillText("(...................................................)", leftX, 760);
-                ctx.fillText("ตำแหน่งผู้เซ็นคนที่ 1", leftX, 790);
-
-                const rightX = canvas.width * 0.70;
-                ctx.fillText("ลงชื่อ...................................................", rightX, 720);
-                ctx.fillText("(...................................................)", rightX, 760);
-                ctx.fillText("ตำแหน่งผู้เซ็นคนที่ 2", rightX, 790);
-                
-                document.getElementById('certContainer').style.display = 'block';
-                document.getElementById('certContainer').scrollIntoView({ behavior: 'smooth' });
-            };
+            // สีพื้นหลัง
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            logoImage.onerror = function() {
-                Swal.fire('คำเตือน', 'ไม่สามารถโหลดรูปลงเกียรติบัตรได้', 'warning');
-            };
+            // วาดกรอบนอก (สีน้ำเงิน)
+            ctx.strokeStyle = "#1565c0";
+            ctx.lineWidth = 15;
+            ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
+            
+            // วาดกรอบใน (สีทอง)
+            ctx.strokeStyle = "#ffc107";
+            ctx.lineWidth = 4;
+            ctx.strokeRect(42, 42, canvas.width - 84, canvas.height - 84);
+
+            // โลโก้ / หัวเรื่อง
+            ctx.fillStyle = "#0d47a1";
+            ctx.font = "bold 50px 'Sarabun'";
+            ctx.textAlign = "center";
+            ctx.fillText("เกียรติบัตรฉบับนี้ให้ไว้เพื่อแสดงว่า", canvas.width / 2, 160);
+
+            // ชื่อนักเรียน
+            ctx.fillStyle = "#d84315";
+            ctx.font = "bold 70px 'Sarabun'";
+            ctx.fillText(fullName, canvas.width / 2, 280);
+            
+            // บ้าน
+            ctx.fillStyle = "#555555";
+            ctx.font = "30px 'Sarabun'";
+            ctx.fillText(`( สังกัด ${house} )`, canvas.width / 2, 340);
+
+            // คำอธิบาย
+            ctx.fillStyle = "#000000";
+            ctx.font = "35px 'Sarabun'";
+            ctx.fillText("ได้ผ่านการเข้าร่วมและผ่านเกณฑ์การประเมินกิจกรรมพิเศษ", canvas.width / 2, 440);
+            
+            ctx.fillStyle = "#1565c0";
+            ctx.font = "bold 45px 'Sarabun'";
+            ctx.fillText("School Lockdown & First Aid", canvas.width / 2, 510);
+
+            // ลายเซ็น / วันที่ / ด้านล่าง
+            ctx.fillStyle = "#333333";
+            ctx.font = "24px 'Sarabun'";
+            
+            // วันที่ปัจจุบัน
+            const today = new Date();
+            const dateStr = `ให้ไว้ ณ วันที่ ${today.getDate()} / ${today.getMonth() + 1} / ${today.getFullYear() + 543}`;
+            ctx.fillText(dateStr, canvas.width / 2, 600);
+
+            ctx.font = "bold 24px 'Sarabun'";
+            ctx.fillText("โครงการ SMART WiTH care and share", canvas.width / 2, 640);
+            
+            // แสดงพื้นที่ Canvas
+            document.getElementById('certContainer').style.display = 'block';
+            
+            // เลื่อนหน้าจอลงมาที่เกียรติบัตร
+            document.getElementById('certContainer').scrollIntoView({ behavior: 'smooth' });
         }
 
         function downloadCertificate() {
             const canvas = document.getElementById('certCanvas');
+            // แปลง Canvas เป็น Data URL (ไฟล์ภาพ PNG)
             const imageURL = canvas.toDataURL("image/png");
             
+            // สร้างแท็กลิงก์จำลองเพื่อกดดาวน์โหลด
             const link = document.createElement('a');
             link.href = imageURL;
             link.download = `Certificate_${document.getElementById('inpFirstName').value}.png`;

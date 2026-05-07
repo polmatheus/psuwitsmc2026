@@ -78,7 +78,6 @@
             </div>
         </div>
 
-        <!-- พื้นที่แสดงเกียรติบัตร -->
         <div id="certContainer" class="cert-container">
             <h3 class="fw-bold text-success mb-3"><i class="bi bi-check-circle-fill"></i> ยินดีด้วย! คุณผ่านเกณฑ์การประเมิน</h3>
             <canvas id="certCanvas" width="1000" height="700"></canvas>
@@ -95,12 +94,11 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxa2Fxc3htYmV3aWx6cnVvZ2R3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0ODgzMTksImV4cCI6MjA4NDA2NDMxOX0.TFyfNcFXcUUF29Iexmkjf6EaNIXAv8KuOFY_ydAY_z8'; 
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // ฟังก์ชันช่วยโหลดรูปภาพพร้อมจัดการ CORS
         function loadImages(sources) {
             return Promise.all(sources.map(src => {
                 return new Promise((resolve, reject) => {
                     const img = new Image();
-                    img.crossOrigin = "Anonymous"; // สำคัญมาก เพื่อให้ดาวน์โหลดภาพได้
+                    img.crossOrigin = "Anonymous";
                     img.onload = () => resolve(img);
                     img.onerror = reject;
                     img.src = src;
@@ -179,7 +177,7 @@
 
                 if (isLockdownPass && isFirstAidPass) {
                     document.fonts.ready.then(() => {
-                        drawCertificate(fullnameDb, house, studentId);
+                        drawCertificate(fullnameDb, studentId); 
                     });
                 } else {
                     let failReason = `<ul class="text-start mt-3" style="font-size: 1.1rem;">`;
@@ -200,11 +198,10 @@
             }
         }
 
-        async function drawCertificate(fullName, house, studentId) {
+        async function drawCertificate(fullName, studentId) {
             Swal.fire({ title: 'กำลังสร้างเกียรติบัตร...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
             try {
-                // โหลดรูปภาพทั้งหมดก่อนวาด (ใช้ wsrv.nl proxy เพื่อแก้ปัญหา CORS)
                 const [logo1, logo2, sig1, sig2] = await loadImages([
                     "https://wsrv.nl/?url=https://img2.pic.in.th/pic/PSUWIT_Circle.png",
                     "https://wsrv.nl/?url=https://img1.pic.in.th/images/7469d4e1-7fea-4d21-9899-fbcc77c50d74.jpg",
@@ -215,85 +212,81 @@
                 const canvas = document.getElementById('certCanvas');
                 const ctx = canvas.getContext('2d');
                 
-                // ล้างหน้าจอและใส่สีพื้นหลัง
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = "#ffffff";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 
-                // วาดกรอบนอก (สีน้ำเงิน)
                 ctx.strokeStyle = "#1565c0";
                 ctx.lineWidth = 15;
                 ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
                 
-                // วาดกรอบใน (สีทอง)
                 ctx.strokeStyle = "#ffc107";
                 ctx.lineWidth = 4;
                 ctx.strokeRect(42, 42, canvas.width - 84, canvas.height - 84);
 
-                // เลขรันนัมเบอร์ มุมขวาบน
+                // --- [ส่วนที่คงเดิม] รหัส ---
+                const formattedId = String(studentId).padStart(3, '0');
                 ctx.fillStyle = "#1565c0";
                 ctx.font = "20px 'Sarabun'";
                 ctx.textAlign = "right";
-                // นำ studentId มาใช้แทนเลขรัน เพื่อให้เป็นเอกลักษณ์ของเด็กแต่ละคน
-                ctx.fillText(`มอ.ว รหัสเกียรติบัตร ${studentId} /300`, canvas.width - 60, 80);
+                ctx.fillText(`มอ.ว ${formattedId} / 300`, canvas.width - 60, 80);
 
-                // โลโก้หัวเกียรติบัตร
-                // จัดให้อยู่ตรงกลางด้านบน เว้นระยะซ้ายขวาพอสวยงาม
+                // --- [ส่วนที่คงเดิม] โลโก้ ---
                 ctx.drawImage(logo1, 380, 50, 90, 90);
                 ctx.drawImage(logo2, 530, 50, 90, 90);
 
-                // หัวเรื่อง
+                // --- [เว้นที่ว่าง] ขยับข้อมูลลงมา ---
+                // --- [ปรับขนาดอักษรเท่ากัน] เป็น 30px ---
+
+                // คำขึ้นต้น (ขยับลงมาที่ y=250, ขนาด 30px)
                 ctx.fillStyle = "#0d47a1";
-                ctx.font = "bold 45px 'Sarabun'";
+                ctx.font = "30px 'Sarabun'"; // ปรับขนาดเท่ากัน
                 ctx.textAlign = "center";
-                ctx.fillText("เกียรติบัตรฉบับนี้ให้ไว้เพื่อแสดงว่า", canvas.width / 2, 190);
+                ctx.fillText("เกียรติบัตรฉบับนี้ให้ไว้เพื่อแสดงว่า", canvas.width / 2, 250);
 
-                // ชื่อนักเรียน
+                // ชื่อนักเรียน (ขยับลงมาที่ y=340, ขนาด 30px **คง Boldไว้**)
                 ctx.fillStyle = "#d84315";
-                ctx.font = "bold 60px 'Sarabun'";
-                ctx.fillText(fullName, canvas.width / 2, 270);
+                ctx.font = "bold 30px 'Sarabun'"; // ปรับขนาดเท่ากัน คง bold
+                ctx.fillText(fullName, canvas.width / 2, 340);
                 
-                // บ้าน
-                ctx.fillStyle = "#555555";
-                ctx.font = "28px 'Sarabun'";
-                ctx.fillText(`( สังกัด ${house} )`, canvas.width / 2, 320);
-
-                // คำอธิบาย
+                // คำอธิบาย (ขนาด 30px คงเดิม, ขยับลงมาที่ y=430)
                 ctx.fillStyle = "#000000";
-                ctx.font = "30px 'Sarabun'";
-                ctx.fillText("ได้ผ่านการเข้าร่วมและผ่านเกณฑ์การประเมินกิจกรรมพิเศษ", canvas.width / 2, 380);
+                ctx.font = "30px 'Sarabun'"; 
+                ctx.fillText("ได้ผ่านการเข้าร่วมและผ่านเกณฑ์การประเมินกิจกรรมพิเศษ", canvas.width / 2, 430);
                 
+                // กิจกรรม (ขยับลงมาที่ y=490, ขนาด 30px **คง Boldไว้**)
                 ctx.fillStyle = "#1565c0";
-                ctx.font = "bold 40px 'Sarabun'";
-                ctx.fillText("School Lockdown & First Aid", canvas.width / 2, 435);
+                ctx.font = "bold 30px 'Sarabun'"; // ปรับขนาดเท่ากัน คง bold
+                ctx.fillText("School Lockdown & First Aid", canvas.width / 2, 490);
 
-                // วันที่
-                const today = new Date();
-                const dateStr = `ให้ไว้ ณ วันที่ ${today.getDate()} / ${today.getMonth() + 1} / ${today.getFullYear() + 543}`;
+                // บังคับวันที่ (ขยับลงมาที่ y=560, ขนาด 30px)
                 ctx.fillStyle = "#333333";
-                ctx.font = "24px 'Sarabun'";
-                ctx.fillText(dateStr, canvas.width / 2, 490);
+                ctx.font = "30px 'Sarabun'"; // ปรับขนาดเท่ากัน
+                ctx.fillText("ให้ไว้ ณ วันที่ 6 พฤษภาคม พ.ศ. 2569", canvas.width / 2, 560);
 
-                // คำนวณความสูงของลายเซ็นโดยรักษา Aspect Ratio (กำหนดกว้างคงที่ 150px)
-                const sigWidth = 150;
+                // ปรับขนาดลายเซ็นและความสูงให้สอดคล้องกับข้อความที่เลื่อนลง
+                const sigWidth = 120;
                 const sig1Height = (sig1.height / sig1.width) * sigWidth;
                 const sig2Height = (sig2.height / sig2.width) * sigWidth;
 
-                // ลายเซ็นคนที่ 1 (ซ้าย) - นายสุชาติ (x=300)
-                ctx.drawImage(sig1, 300 - (sigWidth/2), 520, sigWidth, sig1Height);
-                ctx.font = "bold 20px 'Sarabun'";
-                ctx.fillText("(นายสุชาติ สุขพันธ์)", 300, 600);
-                ctx.font = "18px 'Sarabun'";
-                ctx.fillText("ผู้อำนวยการโรงเรียน มอ.วิทยานุสรณ์", 300, 625);
+                // ขยับฐานลายเซ็นลงมาที่ y=650 (เดิม 600)
+                const sigBaseline = 650;
 
-                // ลายเซ็นคนที่ 2 (ขวา) - พันโทภาคภูมิ (x=700)
-                ctx.drawImage(sig2, 700 - (sigWidth/2), 520, sigWidth, sig2Height);
-                ctx.font = "bold 20px 'Sarabun'";
-                ctx.fillText("(พันโทภาคภูมิ ทองอร่าม)", 700, 600);
+                // คนที่ 1 (ซ้าย) นายสุชาติ
+                ctx.drawImage(sig1, 300 - (sigWidth/2), sigBaseline - sig1Height, sigWidth, sig1Height);
+                // --- [ส่วนที่คงเดิม] ชื่อผู้เซ็น ---
+                ctx.font = "bold 20px 'Sarabun'"; 
+                ctx.fillText("(นายสุชาติ สุขพันธ์)", 300, sigBaseline + 25); // 675
+                ctx.font = "18px 'Sarabun'"; 
+                ctx.fillText("ผู้อำนวยการโรงเรียน มอ.วิทยานุสรณ์", 300, sigBaseline + 50); // 700
+
+                // คนที่ 2 (ขวา) พันโทภาคภูมิ
+                ctx.drawImage(sig2, 700 - (sigWidth/2), sigBaseline - sig2Height, sigWidth, sig2Height);
+                // --- [ส่วนที่คงเดิม] ชื่อผู้เซ็น ---
+                ctx.font = "bold 20px 'Sarabun'"; 
+                ctx.fillText("(พันโทภาคภูมิ ทองอร่าม)", 700, sigBaseline + 25); // 675
 
                 Swal.close();
-
-                // แสดงพื้นที่ Canvas
                 document.getElementById('certContainer').style.display = 'block';
                 document.getElementById('certContainer').scrollIntoView({ behavior: 'smooth' });
 

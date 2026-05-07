@@ -240,37 +240,37 @@
 
                 // คำขึ้นต้น (ขยับลงมาที่ y=250, ขนาด 30px)
                 ctx.fillStyle = "#0d47a1";
-                ctx.font = "30px 'Sarabun'"; // ปรับขนาดเท่ากัน
+                ctx.font = "28px 'Sarabun'"; // ปรับขนาดเท่ากัน
                 ctx.textAlign = "center";
-                ctx.fillText("เกียรติบัตรฉบับนี้ให้ไว้เพื่อแสดงว่า", canvas.width / 2, 250);
+                ctx.fillText("เกียรติบัตรฉบับนี้ให้ไว้เพื่อแสดงว่า", canvas.width / 2, 200);
 
                 // ชื่อนักเรียน (ขยับลงมาที่ y=340, ขนาด 30px **คง Boldไว้**)
                 ctx.fillStyle = "#d84315";
-                ctx.font = "bold 30px 'Sarabun'"; // ปรับขนาดเท่ากัน คง bold
-                ctx.fillText(fullName, canvas.width / 2, 340);
+                ctx.font = "bold 28px 'Sarabun'"; // ปรับขนาดเท่ากัน คง bold
+                ctx.fillText(fullName, canvas.width / 2, 250);
                 
                 // คำอธิบาย (ขนาด 30px คงเดิม, ขยับลงมาที่ y=430)
                 ctx.fillStyle = "#000000";
-                ctx.font = "30px 'Sarabun'"; 
-                ctx.fillText("ได้ผ่านการเข้าร่วมและผ่านเกณฑ์การประเมินกิจกรรมพิเศษ", canvas.width / 2, 430);
+                ctx.font = "28px 'Sarabun'"; 
+                ctx.fillText("ได้ผ่านการเข้าร่วมและผ่านเกณฑ์การประเมินกิจกรรม", canvas.width / 2, 300);
                 
                 // กิจกรรม (ขยับลงมาที่ y=490, ขนาด 30px **คง Boldไว้**)
                 ctx.fillStyle = "#1565c0";
-                ctx.font = "bold 30px 'Sarabun'"; // ปรับขนาดเท่ากัน คง bold
-                ctx.fillText("School Lockdown & First Aid", canvas.width / 2, 490);
+                ctx.font = "bold 28px 'Sarabun'"; // ปรับขนาดเท่ากัน คง bold
+                ctx.fillText("School Lockdown & First Aid", canvas.width / 2, 350);
 
                 // บังคับวันที่ (ขยับลงมาที่ y=560, ขนาด 30px)
                 ctx.fillStyle = "#333333";
-                ctx.font = "30px 'Sarabun'"; // ปรับขนาดเท่ากัน
-                ctx.fillText("ให้ไว้ ณ วันที่ 6 พฤษภาคม พ.ศ. 2569", canvas.width / 2, 560);
+                ctx.font = "28px 'Sarabun'"; // ปรับขนาดเท่ากัน
+                ctx.fillText("ให้ไว้ ณ วันที่ 6 พฤษภาคม พ.ศ. 2569", canvas.width / 2, 400);
 
                 // ปรับขนาดลายเซ็นและความสูงให้สอดคล้องกับข้อความที่เลื่อนลง
-                const sigWidth = 120;
+                const sigWidth = 80;
                 const sig1Height = (sig1.height / sig1.width) * sigWidth;
                 const sig2Height = (sig2.height / sig2.width) * sigWidth;
 
                 // ขยับฐานลายเซ็นลงมาที่ y=650 (เดิม 600)
-                const sigBaseline = 650;
+                const sigBaseline = 550;
 
                 // คนที่ 1 (ซ้าย) นายสุชาติ
                 ctx.drawImage(sig1, 300 - (sigWidth/2), sigBaseline - sig1Height, sigWidth, sig1Height);
